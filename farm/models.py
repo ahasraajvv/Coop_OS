@@ -4,7 +4,7 @@ class Batch(models.Model):
 
     batch_no =  models.IntegerField(primary_key=True)
     date     = models.DateField()
-    buying_price = models.DecimalField(max_digits=10, decimal_places=2)
+    buying_price = models.DecimalField(max_digits=10, decimal_places=2) # give it in decimal so rounding errors wont happen 
     no_of_chicks = models.IntegerField()
 
 

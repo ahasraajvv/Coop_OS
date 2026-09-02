@@ -29,8 +29,6 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
 
     
 class BatchSaleSerializer(serializers.ModelSerializer):
-    batch = BatchSerializer()
-    customer = CustomerDetailSerializer()
     class Meta:
         model = BatchSale
         fields = '__all__'
