@@ -45,6 +45,7 @@ class BatchSale(models.Model):
     date     = models.DateField()
     no_of_hens = models.IntegerField()
     no_of_roosters = models.IntegerField()
+    kg  = models.DecimalField(max_digits=10, decimal_places=2,null=True, blank=True)
     amount =  models.DecimalField(max_digits=10, decimal_places=2  )
     customer = models.ForeignKey(CustomerDetail, on_delete=models.CASCADE, null=True, blank=True)
 
