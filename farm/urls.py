@@ -11,5 +11,5 @@ router.register(r'batch-sales', BatchSaleViewSet, basename='batch-sale')
 router.register(r'infra-expenses', InfraExpenseViewSet, basename='infra-expense')
 
 urlpatterns = [
-    path('api/', include(router.urls)),
+    path('', include(router.urls)),
 ]

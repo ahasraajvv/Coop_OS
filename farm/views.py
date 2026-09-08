@@ -1,10 +1,69 @@
+from django.db.models.aggregates import Sum
 from rest_framework import viewsets
 from .models import Batch, BatchExpense, MortalityRate, CustomerDetail, BatchSale, InfraExpense
 from .serializers import BatchSerializer, BatchExpenseSerializer, CustomerDetailSerializer, MortalityRateSerializer, BatchSaleSerializer, InfraExpenseSerializer, BatchSaleDetailSerializer
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
 class BatchViewSet(viewsets.ModelViewSet): # CRUD operations for Batch model
     queryset = Batch.objects.all()
     serializer_class = BatchSerializer
+
+    @action (detail = True, methods =["get"])
+    def BatchRevenue(self,request,pk=None):
+        batch = self.get_object()
+        total_sales_of_a_batch  = batch.batchsale_set.aggregate(total = Sum('amount'))['total'] or 0 
+
+        return Response({
+            "batch_no" :  batch.batch_no,
+            "total_revenue" : total_sales_of_a_batch
+
+        })
+
+    @action (detail=True,methods =['get'])
+    def BatchExpense(self,request,pk=None):
+        batch = self.get_object()
+        total_expense_of_a_batch = batch.batchexpense_set.aggregate(total=Sum('amount'))['total'] or 0
+        return Response({
+            'batch_no':batch.batch_no,
+            'total_expenses': total_expense_of_a_batch 
+
+        })
+
+    @action (detail = True, methods =['get'])
+    def Mortality_Rate (self,request,pk=None):
+        batch = self.get_object()
+        total = batch.mortalityrate_set.aggregate(total=Sum('no_of_deaths'))['total'] or 0
+        no_of_chicks = batch.no_of_chicks
+
+        percentage = (total / no_of_chicks * 100) if no_of_chicks > 0 else 0
+        remaining_chicks = no_of_chicks - total
+
+        return Response({
+            'batch_no': batch.batch_no,
+            'mortality_rate': percentage,
+            'no_of_deaths': total,
+
+            'Remaining_chicks': remaining_chicks
+        })
+
+    @action (detail =True,methods =['get'])
+    def ProfitORLose (self,request,pk=None):
+        batch = self.get_object()
+        revenue = batch.batchsale_set.aggregate(total=Sum('amount'))['total'] or 0
+        expense = batch.batchexpense_set.aggregate(total=Sum('amount')) ['total'] or 0
+        total_expenses = expense + batch.buying_price 
+
+        profit_or_loss = revenue - total_expenses
+        status = "Profit" if profit_or_loss > 0 else "Loss" if profit_or_loss < 0 else "Break-even"
+
+        return Response({
+            'batch_no': batch.batch_no,
+            'revenue': revenue,
+            'expense': expense,
+            'profit_or_loss': profit_or_loss,
+            'status': status
+        })
 
 class BatchExpenseViewSet(viewsets.ModelViewSet):  # CRUD operations for BatchExpense model 
     queryset =  BatchExpense.objects.all()
