@@ -1,9 +1,11 @@
-from django.db.models.aggregates import Sum
+from django.db.models.aggregates import Sum, Count
+from django.db.models.functions import TruncWeek
 from rest_framework import viewsets
 from .models import Batch, BatchExpense, MortalityRate, CustomerDetail, BatchSale, InfraExpense
 from .serializers import BatchSerializer, BatchExpenseSerializer, CustomerDetailSerializer, MortalityRateSerializer, BatchSaleSerializer, InfraExpenseSerializer, BatchSaleDetailSerializer
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.shortcuts import render
 
 class BatchViewSet(viewsets.ModelViewSet): # CRUD operations for Batch model
     queryset = Batch.objects.all()
@@ -65,6 +67,21 @@ class BatchViewSet(viewsets.ModelViewSet): # CRUD operations for Batch model
             'status': status
         })
 
+    @action (detail=True, methods=['get'])
+    def WeeklySales(self, request, pk=None):
+        batch = self.get_object()
+        weekly = batch.batchsale_set.annotate(
+            week=TruncWeek('date')
+        ).values('week').annotate(
+            sales_count=Count('id'),
+            total_amount=Sum('amount')
+        ).order_by('week')
+
+        return Response({
+            'batch_no': batch.batch_no,
+            'weekly_sales': list(weekly)
+        })
+
 class BatchExpenseViewSet(viewsets.ModelViewSet):  # CRUD operations for BatchExpense model 
     queryset =  BatchExpense.objects.all()
     serializer_class = BatchExpenseSerializer
@@ -90,6 +107,10 @@ class InfraExpenseViewSet(viewsets.ModelViewSet):  # CRUD operations for InfraEx
 class CustomerDetailViewSet(viewsets.ModelViewSet):  # CRUD operations for CustomerDetail model
     queryset = CustomerDetail.objects.all()
     serializer_class = CustomerDetailSerializer
+
+
+def index (request):
+    return render (request, 'farm/index.html')
 
 
 
