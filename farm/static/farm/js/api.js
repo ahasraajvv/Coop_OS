@@ -12,6 +12,21 @@ async function fetchBatches() {
     return await response.json();
 }
 
+async function createBatch(data) {
+    const response = await fetch(`${API_BASE}/batches/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(JSON.stringify(err));
+    }
+    return await response.json();
+}
+
 async function fetchProfitLoss(batchNo) {
     const response = await fetch(`${API_BASE}/batches/${batchNo}/ProfitORLose/`);
     if (!response.ok) throw new Error(`Failed to fetch P&L for batch ${batchNo}`);

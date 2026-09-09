@@ -14,7 +14,6 @@ let cachedCustomers = [];
 function switchTab(tabName) {
     currentTab = tabName;
 
-    // Subtitles for header
     const titles = {
         dashboard: 'டாஷ்போர்டு (Farm Dashboard)',
         sales: 'விற்பனை & வருமானம் (Sales & Income)',
@@ -23,7 +22,6 @@ function switchTab(tabName) {
     };
     document.getElementById('header-subtitle').textContent = titles[tabName] || 'பண்ணை மேலாண்மை';
 
-    // Hide all views, show selected
     const views = ['dashboard', 'sales', 'expenses', 'mortality'];
     views.forEach(v => {
         const el = document.getElementById(`view-${v}`);
@@ -39,10 +37,7 @@ function switchTab(tabName) {
         }
     });
 
-    // Scroll back to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    // Load data for the active screen
     refreshCurrentView();
 }
 
@@ -54,8 +49,47 @@ function refreshCurrentView() {
 }
 
 // =========================================================
-// 2. DASHBOARD SCREEN
+// 2. DASHBOARD SCREEN & BATCH CREATION
 // =========================================================
+
+function toggleBatchForm() {
+    const card = document.getElementById('card-add-batch');
+    if (!card) return;
+    const isHidden = card.classList.contains('hidden');
+    card.classList.toggle('hidden', !isHidden);
+    if (isHidden) {
+        document.getElementById('batch-date').valueAsDate = new Date();
+    }
+}
+
+async function handleCreateBatch(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-batch');
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳</span> சேமிக்கப்படுகிறது...';
+
+    const payload = {
+        batch_no: parseInt(document.getElementById('batch-no').value),
+        date: document.getElementById('batch-date').value,
+        no_of_chicks: parseInt(document.getElementById('batch-chicks').value),
+        buying_price: parseFloat(document.getElementById('batch-price').value)
+    };
+
+    try {
+        await createBatch(payload);
+        showToast('புதிய தொகுதி வெற்றிகரமாக சேர்க்கப்பட்டது! (Batch added!)', false);
+        document.getElementById('form-batch').reset();
+        toggleBatchForm();
+        cachedBatches = []; // Invalidate cache so dropdowns refresh
+        await loadDashboard();
+    } catch (err) {
+        console.error('Error saving batch:', err);
+        showToast('தொகுதியை சேமிப்பதில் பிழை: ' + err.message, true);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>💾</span> தொகுதியை சேமி (Save Batch)';
+    }
+}
 
 async function loadDashboard() {
     const container = document.getElementById('batches-container');
@@ -131,7 +165,6 @@ function createBatchCard(batch, mortality, profitLoss, weeklySales) {
 
     return `
         <div class="batch-card bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-            <!-- Header -->
             <div class="flex items-center justify-between mb-1">
                 <h3 class="text-base font-black text-slate-800 tracking-tight">தொகுதி #${batch.batch_no} (Batch ${batch.batch_no})</h3>
                 <span class="text-xs font-bold px-2.5 py-0.5 rounded-full border ${badgeColor}">
@@ -140,7 +173,6 @@ function createBatchCard(batch, mortality, profitLoss, weeklySales) {
             </div>
             <p class="text-xs text-slate-400 mb-3 font-mono">துவக்கம்: ${batch.date}</p>
 
-            <!-- Bird Counts Row -->
             <div class="grid grid-cols-3 gap-2 mb-3">
                 <div class="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
                     <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">மொத்தம் (Total)</p>
@@ -156,7 +188,6 @@ function createBatchCard(batch, mortality, profitLoss, weeklySales) {
                 </div>
             </div>
 
-            <!-- Financials Row -->
             <div class="grid grid-cols-2 gap-2 mb-3">
                 <div class="bg-emerald-50/50 rounded-xl p-2.5 text-center border border-emerald-100">
                     <p class="text-[10px] text-emerald-700 uppercase font-bold tracking-wider">வருமானம் (Income)</p>
@@ -168,7 +199,6 @@ function createBatchCard(batch, mortality, profitLoss, weeklySales) {
                 </div>
             </div>
 
-            <!-- Weekly Sales Summary -->
             <div class="mb-3 bg-slate-50 rounded-xl p-3 border border-slate-100">
                 <div class="flex justify-between items-center mb-2">
                     <p class="text-[10px] text-slate-500 uppercase tracking-wider font-bold">வாராந்திர விற்பனை (Weekly Sales)</p>
@@ -179,7 +209,6 @@ function createBatchCard(batch, mortality, profitLoss, weeklySales) {
                 </div>
             </div>
 
-            <!-- Net Result -->
             <div class="flex justify-between items-center pt-3 border-t border-slate-100">
                 <span class="text-xs text-slate-500 font-semibold">நிகர முடிவு (Net Result):</span>
                 <span class="text-base font-black ${netColor}">
@@ -354,7 +383,6 @@ async function handleCreateExpense(e) {
 
 async function loadMortalityScreen() {
     await populateBatchDropdown('mortality-batch');
-    // Set default datetime to now
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     document.getElementById('mortality-date').value = now.toISOString().slice(0, 16);
