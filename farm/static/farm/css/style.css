@@ -1,0 +1,32 @@
+/* =============================================
+   style.css — Custom styles for CoopOS Mobile App
+   Tailwind handles most styling via classes in HTML.
+   This file is for custom things Tailwind can't do.
+   ============================================= */
+
+/* Smooth page transitions */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* Indian Rupee currency formatting */
+.currency::before {
+    content: '₹';
+}
+
+/* Mortality rate progress bar animation */
+.mortality-bar-fill {
+    transition: width 0.8s ease-in-out;
+}
+
+/* Smooth card hover effect */
+.batch-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.batch-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}

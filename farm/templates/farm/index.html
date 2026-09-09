@@ -1,0 +1,300 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoopOS — பண்ணை மேலாண்மை (Farm Management)</title>
+
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="{% static 'farm/css/style.css' %}">
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 pb-28">
+
+    <!-- Top Header -->
+    <header class="bg-emerald-700 text-white p-4 shadow-md sticky top-0 z-50">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div>
+                <h1 class="text-xl font-black tracking-wider flex items-center gap-1.5">
+                    <span>🐔</span> CoopOS
+                </h1>
+                <p id="header-subtitle" class="text-xs text-emerald-200">டாஷ்போர்டு (Farm Dashboard)</p>
+            </div>
+            <button onclick="refreshCurrentView()" class="text-xs bg-emerald-800 hover:bg-emerald-900 active:scale-95 px-3 py-1.5 rounded-lg border border-emerald-600 transition flex items-center gap-1">
+                <span>🔄</span> புதுப்பி
+            </button>
+        </div>
+    </header>
+
+    <!-- Toast Notification Banner -->
+    <div id="toast" class="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 pointer-events-none max-w-sm w-11/12">
+        <div id="toast-body" class="p-3.5 rounded-xl shadow-lg text-xs font-semibold flex items-center justify-between text-white bg-emerald-600">
+            <span id="toast-msg">செய்தி (Message)</span>
+            <button onclick="hideToast()" class="text-white/80 hover:text-white text-base leading-none ml-2">&times;</button>
+        </div>
+    </div>
+
+    <!-- Main Content Container -->
+    <main class="max-w-md mx-auto p-4">
+
+        <!-- ============================================== -->
+        <!-- SCREEN 1: DASHBOARD VIEW                        -->
+        <!-- ============================================== -->
+        <section id="view-dashboard" class="space-y-4">
+            <div class="flex items-center justify-between mb-1">
+                <h2 class="text-sm font-bold text-slate-600 uppercase tracking-wider">📦 தொகுதிகள் (Active Batches)</h2>
+                <span class="text-xs bg-white px-2 py-0.5 rounded-md text-slate-500 border border-slate-200" id="batch-count-badge">0 தொகுதிகள்</span>
+            </div>
+
+            <!-- Batches Container (Injected by JS) -->
+            <div id="batches-container" class="space-y-4">
+                <div class="text-center py-10 text-slate-400 bg-white rounded-2xl border border-slate-200">
+                    ⏳ தகவல்கள் ஏற்றப்படுகின்றன... (Loading batches...)
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- SCREEN 2: SALES / INCOME VIEW                  -->
+        <!-- ============================================== -->
+        <section id="view-sales" class="hidden space-y-5">
+            <!-- Form Card: Add Sale -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+                    <h3 class="text-base font-bold text-emerald-700 flex items-center gap-1.5">
+                        <span>💰</span> விற்பனை பதிவு (New Sale Entry)
+                    </h3>
+                    <span class="text-[11px] text-slate-400">வருமானம்</span>
+                </div>
+
+                <form id="form-sale" onsubmit="handleCreateSale(event)" class="space-y-3 text-xs">
+                    <!-- Batch Dropdown -->
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">தொகுதி (Batch) *</label>
+                        <select id="sale-batch" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium">
+                            <option value="">-- தொகுதியை தேர்ந்தெடுக்கவும் --</option>
+                        </select>
+                    </div>
+
+                    <!-- Customer Dropdown -->
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">வாடிக்கையாளர் (Customer)</label>
+                        <select id="sale-customer" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium">
+                            <option value="">-- வாடிக்கையாளரை தேர்ந்தெடுக்கவும் --</option>
+                        </select>
+                    </div>
+
+                    <!-- Date -->
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">தேதி (Date) *</label>
+                        <input type="date" id="sale-date" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium">
+                    </div>
+
+                    <!-- Birds Sold: Hens & Roosters -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">பெட்டை கோழி (Hens)</label>
+                            <input type="number" id="sale-hens" min="0" value="0" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">சேவல் (Roosters)</label>
+                            <input type="number" id="sale-roosters" min="0" value="0" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold">
+                        </div>
+                    </div>
+
+                    <!-- Weight (Kg) & Total Amount (₹) -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">எடை (Kg)</label>
+                            <input type="number" step="0.01" id="sale-kg" placeholder="0.00" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">விற்பனை தொகை (₹) *</label>
+                            <input type="number" step="0.01" id="sale-amount" required placeholder="5000" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-emerald-700 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btn-save-sale" class="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold py-3 rounded-xl shadow-md transition text-sm flex items-center justify-center gap-1.5 mt-2">
+                        <span>💾</span> விற்பனையை சேமி (Save Sale)
+                    </button>
+                </form>
+            </div>
+
+            <!-- List Card: Sales History -->
+            <div>
+                <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-2.5">📋 சமீபத்திய விற்பனைகள் (Sales History)</h3>
+                <div id="sales-list" class="space-y-2.5">
+                    <div class="text-center py-6 text-slate-400 bg-white rounded-xl border border-slate-200">ஏற்றப்படுகிறது...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- SCREEN 3: EXPENSE VIEW                         -->
+        <!-- ============================================== -->
+        <section id="view-expenses" class="hidden space-y-5">
+            <!-- Form Card: Add Expense -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+                    <h3 class="text-base font-bold text-orange-600 flex items-center gap-1.5">
+                        <span>💸</span> புதிய செலவு பதிவு (Add Expense)
+                    </h3>
+                    <span class="text-[11px] text-slate-400">செலவு விவரம்</span>
+                </div>
+
+                <form id="form-expense" onsubmit="handleCreateExpense(event)" class="space-y-3 text-xs">
+                    <!-- Batch Dropdown -->
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">தொகுதி (Batch) *</label>
+                        <select id="expense-batch" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium">
+                            <option value="">-- தொகுதியை தேர்ந்தெடுக்கவும் --</option>
+                        </select>
+                    </div>
+
+                    <!-- Date -->
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">தேதி (Date) *</label>
+                        <input type="date" id="expense-date" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium">
+                    </div>
+
+                    <!-- Expense Type -->
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">செலவு வகை (Expense Category) *</label>
+                        <select id="expense-type" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium">
+                            <option value="Starter Feed">தீவனம் - Starter Feed</option>
+                            <option value="Grower Feed">தீவனம் - Grower Feed</option>
+                            <option value="Finisher Feed">தீவனம் - Finisher Feed</option>
+                            <option value="Vaccines">தடுப்பூசி (Vaccines - Ranikhet/Lasota)</option>
+                            <option value="Medicines & Vitamins">மருந்துகள் & வைட்டமின் (Medicines & Tonics)</option>
+                            <option value="Labor & Wages">பண்ணை கூலி (Labor Wages)</option>
+                            <option value="Electricity & Power">மின்சாரம் (Electricity)</option>
+                            <option value="Transport">போக்குவரத்து (Transport)</option>
+                            <option value="Litter Material">உமி / உறைவிடம் (Sawdust/Litter)</option>
+                            <option value="Other Expenses">இதர செலவுகள் (Other)</option>
+                        </select>
+                    </div>
+
+                    <!-- Amount (₹) -->
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">தொகை (Amount ₹) *</label>
+                        <input type="number" step="0.01" id="expense-amount" required placeholder="1500" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-orange-600 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+
+                    <button type="submit" id="btn-save-expense" class="w-full bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white font-bold py-3 rounded-xl shadow-md transition text-sm flex items-center justify-center gap-1.5 mt-2">
+                        <span>💾</span> செலவை சேமி (Save Expense)
+                    </button>
+                </form>
+            </div>
+
+            <!-- List Card: Expenses History -->
+            <div>
+                <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-2.5">📋 செலவு பட்டியல் (Expenses History)</h3>
+                <div id="expenses-list" class="space-y-2.5">
+                    <div class="text-center py-6 text-slate-400 bg-white rounded-xl border border-slate-200">ஏற்றப்படுகிறது...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- SCREEN 4: MORTALITY VIEW                       -->
+        <!-- ============================================== -->
+        <section id="view-mortality" class="hidden space-y-5">
+            <!-- Form Card: Log Mortality -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+                    <h3 class="text-base font-bold text-rose-600 flex items-center gap-1.5">
+                        <span>💀</span> கோழி இறப்பு பதிவு (Log Death)
+                    </h3>
+                    <span class="text-[11px] text-slate-400">இறப்பு விகிதம்</span>
+                </div>
+
+                <form id="form-mortality" onsubmit="handleCreateMortality(event)" class="space-y-3 text-xs">
+                    <!-- Batch Dropdown -->
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">தொகுதி (Batch) *</label>
+                        <select id="mortality-batch" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500 font-medium">
+                            <option value="">-- தொகுதியை தேர்ந்தெடுக்கவும் --</option>
+                        </select>
+                    </div>
+
+                    <!-- Date & Time -->
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">தேதி & நேரம் (Date & Time) *</label>
+                        <input type="datetime-local" id="mortality-date" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500 font-medium">
+                    </div>
+
+                    <!-- Number of Deaths -->
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">இறந்த பறவைகள் எண்ணிக்கை (No. of Deaths) *</label>
+                        <input type="number" id="mortality-count" min="1" required placeholder="3" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-rose-600 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+
+                    <!-- Reason of Death -->
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">இறப்பிற்கான காரணம் (Reason) *</label>
+                        <select id="mortality-reason" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500 font-medium">
+                            <option value="Initial transport stress">போக்குவரத்து சோர்வு (Transport Stress)</option>
+                            <option value="Severe Heatwave / Dehydration">கடும் வெயில் / நீர்ச்சத்து குறைவு (Heat Stress)</option>
+                            <option value="Indigestion / Weak chicks">செரிமானக் கோளாறு / பலவீனமான குஞ்சு (Indigestion)</option>
+                            <option value="Bacterial / Viral infection">தொற்றுநோய் / காய்ச்சல் (Infection / Disease)</option>
+                            <option value="Predator attack">நாய்கள் / கழுகு / பூனை தாக்குதல் (Predator)</option>
+                            <option value="Unknown reason">காரணம் தெரியவில்லை (Unknown)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" id="btn-save-mortality" class="w-full bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white font-bold py-3 rounded-xl shadow-md transition text-sm flex items-center justify-center gap-1.5 mt-2">
+                        <span>💾</span> இறப்பை பதிவு செய் (Record Death)
+                    </button>
+                </form>
+            </div>
+
+            <!-- List Card: Mortality History -->
+            <div>
+                <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-2.5">📋 சமீபத்திய இறப்பு பதிவுகள் (Mortality Log)</h3>
+                <div id="mortality-list" class="space-y-2.5">
+                    <div class="text-center py-6 text-slate-400 bg-white rounded-xl border border-slate-200">ஏற்றப்படுகிறது...</div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ============================================== -->
+    <!-- BOTTOM MOBILE NAVIGATION BAR                   -->
+    <!-- ============================================== -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-2xl z-50">
+        <div class="max-w-md mx-auto grid grid-cols-4 py-2 text-center text-[11px] font-semibold">
+            <!-- Tab 1: Dashboard -->
+            <button onclick="switchTab('dashboard')" id="tab-dashboard" class="flex flex-col items-center py-1 text-emerald-700 transition">
+                <span class="text-xl leading-none mb-1">📊</span>
+                <span>தொகுதிகள்</span>
+            </button>
+
+            <!-- Tab 2: Sales -->
+            <button onclick="switchTab('sales')" id="tab-sales" class="flex flex-col items-center py-1 text-slate-400 hover:text-emerald-600 transition">
+                <span class="text-xl leading-none mb-1">💰</span>
+                <span>விற்பனை</span>
+            </button>
+
+            <!-- Tab 3: Expenses -->
+            <button onclick="switchTab('expenses')" id="tab-expenses" class="flex flex-col items-center py-1 text-slate-400 hover:text-emerald-600 transition">
+                <span class="text-xl leading-none mb-1">💸</span>
+                <span>செலவுகள்</span>
+            </button>
+
+            <!-- Tab 4: Mortality -->
+            <button onclick="switchTab('mortality')" id="tab-mortality" class="flex flex-col items-center py-1 text-slate-400 hover:text-emerald-600 transition">
+                <span class="text-xl leading-none mb-1">💀</span>
+                <span>இறப்பு</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- JavaScript Layers -->
+    <script src="{% static 'farm/js/api.js' %}"></script>
+    <script src="{% static 'farm/js/app.js' %}"></script>
+</body>
+</html>
