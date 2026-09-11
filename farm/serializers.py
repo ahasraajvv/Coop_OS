@@ -6,6 +6,10 @@ class BatchSerializer(serializers.ModelSerializer):
         model = Batch
         fields = '__all__'  
 
+    def validate_no_of_chicks(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Number of chicks must be greater than zero.")
+
 
 class BatchExpenseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -32,6 +36,13 @@ class BatchSaleSerializer(serializers.ModelSerializer):
     class Meta:
         model = BatchSale
         fields = '__all__'
+
+    def validate(self,data):
+        no_of_hens = data.get('no_of_hens', 0)
+        no_of_roosters = data.get('no_of_roosters', 0)
+        if no_of_hens + no_of_roosters <= 0:
+            raise serializers.ValidationError("Total number of hens and roosters must be greater than zero.")
+
 
 
 class BatchSaleDetailSerializer(serializers.ModelSerializer):
