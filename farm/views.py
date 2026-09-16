@@ -6,6 +6,8 @@ from .serializers import BatchSerializer, BatchExpenseSerializer, CustomerDetail
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import render
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
 class BatchViewSet(viewsets.ModelViewSet): # CRUD operations for Batch model
     queryset = Batch.objects.all()
@@ -113,4 +115,15 @@ def index (request):
     return render (request, 'farm/index.html')
 
 
+def login_page(request):
+    return render(request, 'farm/login.html')
+
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_view(request):
+    # Deletes the token from the DB → instantly revoked
+    request.user.auth_token.delete()
+    return Response({"message": "Logged out successfully."})
 

@@ -23,9 +23,14 @@
                 </h1>
                 <p id="header-subtitle" class="text-xs text-emerald-200">டாஷ்போர்டு (Farm Dashboard)</p>
             </div>
-            <button onclick="refreshCurrentView()" class="text-xs bg-emerald-800 hover:bg-emerald-900 active:scale-95 px-3 py-1.5 rounded-lg border border-emerald-600 transition flex items-center gap-1">
-                <span>🔄</span> புதுப்பி
-            </button>
+            <div class="flex items-center gap-2">
+                <button onclick="refreshCurrentView()" class="text-xs bg-emerald-800 hover:bg-emerald-900 active:scale-95 px-3 py-1.5 rounded-lg border border-emerald-600 transition flex items-center gap-1">
+                    <span>🔄</span> புதுப்பி
+                </button>
+                <button onclick="handleLogout()" class="text-xs bg-red-700 hover:bg-red-800 active:scale-95 px-3 py-1.5 rounded-lg border border-red-600 transition flex items-center gap-1 shadow-sm">
+                    <span>🔒</span> வெளியேறு
+                </button>
+            </div>
         </div>
     </header>
 
@@ -336,6 +341,32 @@
     </nav>
 
     <!-- JavaScript Layers -->
+    <script>
+        // GUARD: If no token, kick user to login page immediately
+        (function() {
+            const token = localStorage.getItem('coopOS_token');
+            if (!token) {
+                window.location.href = '/login/';
+            }
+        })();
+
+        async function handleLogout() {
+            try {
+                await fetch('/api/logout/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Token ' + localStorage.getItem('coopOS_token')
+                    }
+                });
+            } catch (e) {
+                console.error("Logout failed", e);
+            }
+            // Always remove the token and redirect, even if the API call fails
+            localStorage.removeItem('coopOS_token');
+            window.location.href = '/login/';
+        }
+    </script>
     <script src="{% static 'farm/js/api.js' %}"></script>
     <script src="{% static 'farm/js/app.js' %}"></script>
 </body>
