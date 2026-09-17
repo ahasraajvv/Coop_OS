@@ -1,59 +1,73 @@
-# Coop_OS 🐔📊
+# 🐔 CoopOS - Poultry Farm ERP
 
-A production-ready, full-stack farm management system designed specifically for country chicken (Naatu Kozhi) farming. Coop_OS tracks batch-wise financials, infrastructure expenses, and mortality rates to provide real-time profit/loss visibility and operational analytics.
+![Django](https://img.shields.io/badge/Django-092E20?style=for-the-badge&logo=django&logoColor=white)
+![Django REST](https://img.shields.io/badge/DJANGO-REST-ff1709?style=for-the-badge&logo=django&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-323330?style=for-the-badge&logo=javascript&logoColor=F7DF1E)
 
-## Tech Stack
-* **Backend Framework:** Django (v6.1)
-* **API Layer:** Django REST Framework (DRF)
-* **Database:** SQLite (Configured for relational metrics)
-* **Server & Deployment:** Gunicorn (WSGI) & WhiteNoise (Static file serving)
+**CoopOS** is a specialized Enterprise Resource Planning (ERP) application built to digitize and manage the lifecycle of commercial poultry farm batches. 
 
-## 💡 Engineering & Architecture Highlights
+> **Live Demo:** [coop-os.onrender.com](https://coop-os.onrender.com/)  
+> *(Note: This API is hosted on Render's free tier. Please allow 50 seconds for the server to "wake up" on the first load).*
 
-This project was built to solve a real-world business problem and goes beyond basic CRUD operations by implementing advanced Django and DB features:
+---
 
-* **Advanced DB Aggregation & Annotation:** 
-  Instead of computationally expensive Python-level loops, the API utilizes Django's ORM (`Sum`, `Count`, `TruncWeek`) for heavy data lifting. For example, the `WeeklySales` endpoint dynamically groups time-series data at the database level to generate weekly revenue reports.
-* **Financial Data Integrity:** 
-  Uses strictly defined `DecimalField` types for all financial transactions (buying price, sales, infrastructure expenses) to prevent floating-point rounding errors native to `FloatField`.
-* **Dynamic Serializer Switching:** 
-  Implemented custom `get_serializer_class` logic in ViewSets (e.g., `BatchSaleViewSet`) to optimize data payloads. Uses simple relational IDs for `POST`/`PUT` requests, while automatically switching to deeply nested serializers for `GET` requests to reduce N+1 frontend queries.
-* **Custom API Endpoints (RPC style in REST):** 
-  Extensively utilizes DRF `@action` decorators to expose derived, computed data (e.g., `ProfitORLose`, `Mortality_Rate`, `BatchRevenue`) without cluttering standard REST routing.
-* **Production-Ready Configuration:** 
-  Configured with Gunicorn as the WSGI HTTP server and WhiteNoise for robust, self-contained static file delivery, prepping the application for immediate PaaS deployment (Render/Heroku).
+## 📸 Application Walkthrough
 
-## Core Features
-* **Batch Lifecycle Management:** Track a batch of chicks from initial purchase date and price through to final sale.
-* **Financial Analytics:** Real-time calculation of overall profit, loss, or break-even status based on aggregated sales, batch expenses, and initial capital.
-* **Mortality Tracking:** Log death events with reasons, automatically calculating real-time mortality percentages and adjusting remaining inventory.
-* **Customer & Sales Logging:** Relational tracking of customers and their specific batch purchases (by quantity and weight).
+*(Replace this section with a GIF or screenshots of your Dashboard, Login Screen, and Profit/Loss calculation)*
 
-## Local Development Setup
+![Dashboard Screenshot](link_to_your_screenshot_here)
 
-1. **Clone the repository:**
-   ```bash
-   git clone <your-repo-url>
-   cd Coop_OS
-   ```
-2. **Create and activate a virtual environment:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-   ```
-3. **Install requirements:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. **Run migrations:**
-   ```bash
-   python manage.py migrate
-   ```
-5. **(Optional) Seed Database:**
-   ```bash
-   python seed_test_data.py
-   ```
-6. **Start the development server:**
-   ```bash
-   python manage.py runserver
-   ```
+---
+
+## 🏗️ Architecture & Technical Highlights
+
+This project was built using an **API-First Architecture**, strictly decoupling the backend business logic from the frontend UI.
+
+* **Backend:** Django & Django REST Framework (DRF)
+* **Frontend:** Single Page Application (SPA) using Vanilla JS, HTML, and Tailwind CSS.
+* **Database:** Migrated from local SQLite to a cloud **PostgreSQL** instance.
+* **Authentication:** Implemented **Token-Based Authentication** (`rest_framework.authtoken`) for secure, stateless API communication. Tokens are managed via browser `localStorage` and custom HTTP interceptors.
+* **Security:** Route guarding enforced on the frontend SPA; API endpoints locked globally via `IsAuthenticated` permissions.
+
+---
+
+## 🚀 Core Features
+
+* **Batch Lifecycle Management:** Track batches from day 1 to sale, monitoring active chick counts.
+* **Financial Engine:** Automated calculation of Profit/Loss, tracking Batch Expenses (feed, medicine) vs. Batch Sales.
+* **Mortality Tracking:** Daily logging of mortality rates to calculate flock survivability percentages dynamically.
+* **Infrastructure Expenses:** Global tracking of non-batch specific overhead (electricity, maintenance).
+* **Token Authentication:** Secure login/logout flows blocking unauthorized data access.
+
+---
+
+## ⚙️ Local Setup & Installation
+
+**1. Clone the repository**
+```bash
+git clone https://github.com/ahasraajvv/Coop_OS.git
+cd Coop_OS
+```
+
+**2. Set up the virtual environment**
+```bash
+python -m venv venv
+source venv/Scripts/activate  # On Windows
+```
+
+**3. Install dependencies**
+```bash
+pip install -r requirements.txt
+```
+
+**4. Run Migrations & Setup Database**
+```bash
+python manage.py migrate
+python setup_db.py  # Automatically provisions the admin user
+```
+
+**5. Start the Server**
+```bash
+python manage.py runserver
+```
