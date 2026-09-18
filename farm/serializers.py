@@ -43,9 +43,7 @@ class BatchSaleSerializer(serializers.ModelSerializer):
         no_of_roosters = data.get('no_of_roosters', 0)
         if no_of_hens + no_of_roosters <= 0:
             raise serializers.ValidationError("Total number of hens and roosters must be greater than zero.")
-        return data
-
-    
+        return data 
 
 class BatchSaleDetailSerializer(serializers.ModelSerializer):
     batch = BatchSerializer()
