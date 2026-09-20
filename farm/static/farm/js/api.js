@@ -61,6 +61,19 @@ async function fetchCustomers() {
     return await response.json();
 }
 
+async function createCustomer(data) {
+    const response = await fetch(`${API_BASE}/customer-details/`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(JSON.stringify(err));
+    }
+    return await response.json();
+}
+
 // --- Sales / Income API ---
 async function fetchSales() {
     const response = await fetch(`${API_BASE}/batch-sales/`, { headers: authHeaders() });

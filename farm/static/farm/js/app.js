@@ -272,6 +272,63 @@ async function loadSalesList() {
     }
 }
 
+// =========================================================
+// AUTO-CALCULATOR FOR SALES
+// =========================================================
+function calculateTotalAmount() {
+    const kg = parseFloat(document.getElementById('sale-kg').value) || 0;
+    const pricePerKg = parseFloat(document.getElementById('sale-price-per-kg').value) || 0;
+    const totalInput = document.getElementById('sale-amount');
+    
+    if (kg > 0 && pricePerKg > 0) {
+        totalInput.value = (kg * pricePerKg).toFixed(2);
+    } else {
+        totalInput.value = '';
+    }
+}
+
+function toggleCustomerForm() {
+    const form = document.getElementById('quick-customer-form');
+    form.classList.toggle('hidden');
+}
+
+async function saveQuickCustomer() {
+    const payload = {
+        customer_id: parseInt(document.getElementById('quick-cust-id').value),
+        customer_name: document.getElementById('quick-cust-name').value,
+        contact_number: document.getElementById('quick-cust-phone').value,
+        email: document.getElementById('quick-cust-email').value || "no-email@farm.com"
+    };
+
+    if (!payload.customer_id || !payload.customer_name || !payload.contact_number) {
+        showToast('Please fill all required customer fields.', true);
+        return;
+    }
+
+    try {
+        await createCustomer(payload);
+        showToast('வாடிக்கையாளர் சேமிக்கப்பட்டுவிட்டார்! (Customer saved!)', false);
+        
+        // Refresh customer list
+        cachedCustomers = await fetchCustomers();
+        await populateCustomerDropdown('sale-customer');
+        
+        // Auto-select the new customer
+        document.getElementById('sale-customer').value = payload.customer_id;
+        
+        // Hide form and clear it
+        document.getElementById('quick-cust-id').value = '';
+        document.getElementById('quick-cust-name').value = '';
+        document.getElementById('quick-cust-phone').value = '';
+        document.getElementById('quick-cust-email').value = '';
+        toggleCustomerForm();
+
+    } catch (err) {
+        console.error('Error saving customer:', err);
+        showToast('Error: ' + err.message, true);
+    }
+}
+
 async function handleCreateSale(e) {
     e.preventDefault();
     const btn = document.getElementById('btn-save-sale');
