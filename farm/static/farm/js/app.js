@@ -297,7 +297,8 @@ async function saveQuickCustomer() {
         customer_id: parseInt(document.getElementById('quick-cust-id').value),
         customer_name: document.getElementById('quick-cust-name').value,
         contact_number: document.getElementById('quick-cust-phone').value,
-        email: document.getElementById('quick-cust-email').value || "no-email@farm.com"
+        email: document.getElementById('quick-cust-email').value || "no-email@farm.com",
+        address: document.getElementById('quick-cust-address').value || "Farm Walk-in"
     };
 
     if (!payload.customer_id || !payload.customer_name || !payload.contact_number) {
@@ -321,6 +322,7 @@ async function saveQuickCustomer() {
         document.getElementById('quick-cust-name').value = '';
         document.getElementById('quick-cust-phone').value = '';
         document.getElementById('quick-cust-email').value = '';
+        document.getElementById('quick-cust-address').value = '';
         toggleCustomerForm();
 
     } catch (err) {

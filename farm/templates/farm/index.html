@@ -142,6 +142,7 @@
                             <input type="text" id="quick-cust-name" placeholder="Name *" required class="w-full p-2 text-xs rounded-lg border border-slate-200">
                             <input type="text" id="quick-cust-phone" placeholder="Phone *" required class="w-full p-2 text-xs rounded-lg border border-slate-200">
                             <input type="email" id="quick-cust-email" placeholder="Email (Optional)" class="w-full p-2 text-xs rounded-lg border border-slate-200">
+                            <input type="text" id="quick-cust-address" placeholder="Address (Optional)" class="w-full p-2 text-xs rounded-lg border border-slate-200">
                             <button type="button" onclick="saveQuickCustomer()" class="w-full bg-slate-800 text-white text-xs font-bold py-2 rounded-lg">வாடிக்கையாளரை சேமி</button>
                         </div>
                     </div>
@@ -226,18 +227,18 @@
                     <!-- Expense Type -->
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">செலவு வகை (Expense Category) *</label>
-                        <select id="expense-type" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium">
+                        <input list="expense-options" id="expense-type" placeholder="Select or type new category..." required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium">
+                        <datalist id="expense-options">
                             <option value="Starter Feed">தீவனம் - Starter Feed</option>
                             <option value="Grower Feed">தீவனம் - Grower Feed</option>
                             <option value="Finisher Feed">தீவனம் - Finisher Feed</option>
                             <option value="Vaccines">தடுப்பூசி (Vaccines - Ranikhet/Lasota)</option>
                             <option value="Medicines & Vitamins">மருந்துகள் & வைட்டமின் (Medicines & Tonics)</option>
-                            <option value="Labor & Wages">பண்ணை கூலி (Labor Wages)</option>
-                            <option value="Electricity & Power">மின்சாரம் (Electricity)</option>
-                            <option value="Transport">போக்குவரத்து (Transport)</option>
-                            <option value="Litter Material">உமி / உறைவிடம் (Sawdust/Litter)</option>
-                            <option value="Other Expenses">இதர செலவுகள் (Other)</option>
-                        </select>
+                            <option value="Labor / Cleaning">கூலி / சுத்தம் செய்தல் (Labor / Cleaning)</option>
+                            <option value="Electricity / Water">மின்சாரம் / தண்ணீர் (Utilities)</option>
+                            <option value="Transportation">போக்குவரத்து (Transportation)</option>
+                            <option value="Other">மற்றவை (Other)</option>
+                        </datalist>
                     </div>
 
                     <!-- Amount (₹) -->
@@ -298,14 +299,15 @@
                     <!-- Reason of Death -->
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">இறப்பிற்கான காரணம் (Reason) *</label>
-                        <select id="mortality-reason" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500 font-medium">
-                            <option value="Initial transport stress">போக்குவரத்து சோர்வு (Transport Stress)</option>
-                            <option value="Severe Heatwave / Dehydration">கடும் வெயில் / நீர்ச்சத்து குறைவு (Heat Stress)</option>
-                            <option value="Indigestion / Weak chicks">செரிமானக் கோளாறு / பலவீனமான குஞ்சு (Indigestion)</option>
-                            <option value="Bacterial / Viral infection">தொற்றுநோய் / காய்ச்சல் (Infection / Disease)</option>
-                            <option value="Predator attack">நாய்கள் / கழுகு / பூனை தாக்குதல் (Predator)</option>
-                            <option value="Unknown reason">காரணம் தெரியவில்லை (Unknown)</option>
-                        </select>
+                        <input list="mortality-options" id="mortality-reason" placeholder="Select or type new reason..." required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500 font-medium">
+                        <datalist id="mortality-options">
+                            <option value="Initial transport stress">ஆரம்பகட்ட அழுத்தம் (Transport Stress)</option>
+                            <option value="Severe Heatwave / Dehydration">கடும் வெயில் / நீரிழப்பு (Heat Stress)</option>
+                            <option value="Indigestion / Weak chicks">செரிமான கோளாறு / பலவீனமான குஞ்சுகள் (Indigestion)</option>
+                            <option value="Bacterial / Viral infection">பாக்டீரியா / வைரஸ் (Infection / Disease)</option>
+                            <option value="Predator attack">நாய் / பூனை / பாம்பு தாக்குதல் (Predator)</option>
+                            <option value="Unknown Cause">காரணம் தெரியவில்லை (Unknown)</option>
+                        </datalist>
                     </div>
 
                     <button type="submit" id="btn-save-mortality" class="w-full bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white font-bold py-3 rounded-xl shadow-md transition text-sm flex items-center justify-center gap-1.5 mt-2">
@@ -383,7 +385,7 @@
             window.location.href = '/login/';
         }
     </script>
-    <script src="{% static 'farm/js/api.js' %}"></script>
-    <script src="{% static 'farm/js/app.js' %}"></script>
+    <script src="{% static 'farm/js/api.js' %}?v=1.1"></script>
+    <script src="{% static 'farm/js/app.js' %}?v=1.2"></script>
 </body>
 </html>
