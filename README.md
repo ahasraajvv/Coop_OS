@@ -7,8 +7,8 @@
 
 **CoopOS** is a specialized Enterprise Resource Planning (ERP) application built to digitize and manage the lifecycle of commercial poultry farm batches. 
 
-> **Live Demo:** [coop-os.onrender.com](https://coop-os.onrender.com/)  
-> *(Note: This API is hosted on Render's free tier. Please allow 50 seconds for the server to "wake up" on the first load).*
+> **Live Demo:** [ahas.pythonanywhere.com](https://Ahas.pythonanywhere.com/)  
+> *(Hosted on PythonAnywhere for low-latency, instant performance).*
 
 ---
 
