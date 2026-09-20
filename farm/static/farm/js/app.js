@@ -333,17 +333,33 @@ async function saveQuickCustomer() {
 
 async function handleCreateSale(e) {
     e.preventDefault();
+    
+    // Manual Validation to prevent silent browser blocking
+    const batchVal = document.getElementById('sale-batch').value;
+    const dateVal = document.getElementById('sale-date').value;
+    const amountVal = document.getElementById('sale-amount').value;
+    
+    if (!batchVal) {
+        return showToast('Please select a Batch!', true);
+    }
+    if (!dateVal) {
+        return showToast('Please select a Date!', true);
+    }
+    if (!amountVal || parseFloat(amountVal) <= 0) {
+        return showToast('Please enter a valid Total Amount!', true);
+    }
+
     const btn = document.getElementById('btn-save-sale');
     btn.disabled = true;
-    btn.innerHTML = '<span>⏳</span> சேமிக்கப்படுகிறது...';
+    btn.innerHTML = '<span>⏳</span> சேமிக்கிறது...';
 
     const payload = {
-        batch: parseInt(document.getElementById('sale-batch').value),
-        date: document.getElementById('sale-date').value,
+        batch: parseInt(batchVal),
+        date: dateVal,
         no_of_hens: parseInt(document.getElementById('sale-hens').value) || 0,
         no_of_roosters: parseInt(document.getElementById('sale-roosters').value) || 0,
         kg: document.getElementById('sale-kg').value ? parseFloat(document.getElementById('sale-kg').value) : null,
-        amount: parseFloat(document.getElementById('sale-amount').value),
+        amount: parseFloat(amountVal),
         customer: document.getElementById('sale-customer').value ? parseInt(document.getElementById('sale-customer').value) : null
     };
 
