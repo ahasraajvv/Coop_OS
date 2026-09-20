@@ -37,17 +37,27 @@ class BatchViewSet(viewsets.ModelViewSet): # CRUD operations for Batch model
     @action (detail = True, methods =['get'])
     def Mortality_Rate (self,request,pk=None):
         batch = self.get_object()
-        total = batch.mortalityrate_set.aggregate(total=Sum('no_of_deaths'))['total'] or 0
+        
+        # 1. Total deaths
+        total_deaths = batch.mortalityrate_set.aggregate(total=Sum('no_of_deaths'))['total'] or 0
+        
+        # 2. Total sold (Hens + Roosters)
+        sales = batch.batchsale_set.aggregate(
+            total_hens=Sum('no_of_hens'),
+            total_roosters=Sum('no_of_roosters')
+        )
+        total_sold = (sales['total_hens'] or 0) + (sales['total_roosters'] or 0)
+        
+        # 3. Calculate remaining inventory
         no_of_chicks = batch.no_of_chicks
-
-        percentage = (total / no_of_chicks * 100) if no_of_chicks > 0 else 0
-        remaining_chicks = no_of_chicks - total
+        percentage = (total_deaths / no_of_chicks * 100) if no_of_chicks > 0 else 0
+        remaining_chicks = no_of_chicks - total_deaths - total_sold
 
         return Response({
             'batch_no': batch.batch_no,
             'mortality_rate': percentage,
-            'no_of_deaths': total,
-
+            'no_of_deaths': total_deaths,
+            'total_sold': total_sold,
             'Remaining_chicks': remaining_chicks
         })
 
