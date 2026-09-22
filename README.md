@@ -7,8 +7,7 @@
 
 **CoopOS** is a specialized Enterprise Resource Planning (ERP) application built to digitize and manage the lifecycle of commercial poultry farm batches. 
 
-> **Live Demo:** As my father is using it I can't give a separate live demo link I will post my screen shots soon 
-
+> **Live Demo:** https://Ahas.pythonanywhere.com/
 ---
 
 ## 📸 Application Walkthrough
