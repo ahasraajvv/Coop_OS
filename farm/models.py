@@ -50,4 +50,20 @@ class BatchSale(models.Model):
     customer = models.ForeignKey(CustomerDetail, on_delete=models.CASCADE, null=True, blank=True)
 
 
+class VaccinationRecord(models.Model):
+    batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
+    day = models.IntegerField()
+    vaccine_name = models.CharField(max_length=150)
+    disease = models.CharField(max_length=150)
+    dosage = models.CharField(max_length=150, default='', blank=True)
+    route = models.CharField(max_length=100, default='Drinking Water')
+    scheduled_date = models.DateField()
+    is_completed = models.BooleanField(default=False)
+    administered_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True, default='')
 
+    class Meta:
+        ordering = ['day', 'scheduled_date']
+
+    def __str__(self):
+        return f"Batch {self.batch_id} - Day {self.day} {self.vaccine_name}"

@@ -1,11 +1,15 @@
 from django.db.models.aggregates import Sum, Count
 from django.db.models.functions import TruncWeek
 from rest_framework import viewsets
-from .models import Batch, BatchExpense, MortalityRate, CustomerDetail, BatchSale, InfraExpense
-from .serializers import BatchSerializer, BatchExpenseSerializer, CustomerDetailSerializer, MortalityRateSerializer, BatchSaleSerializer, InfraExpenseSerializer, BatchSaleDetailSerializer
+from .models import Batch, BatchExpense, MortalityRate, CustomerDetail, BatchSale, InfraExpense, VaccinationRecord
+from .serializers import (
+    BatchSerializer, BatchExpenseSerializer, CustomerDetailSerializer,
+    MortalityRateSerializer, BatchSaleSerializer, InfraExpenseSerializer,
+    BatchSaleDetailSerializer, VaccinationRecordSerializer
+)
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
@@ -41,12 +45,14 @@ class BatchViewSet(viewsets.ModelViewSet): # CRUD operations for Batch model
         # 1. Total deaths
         total_deaths = batch.mortalityrate_set.aggregate(total=Sum('no_of_deaths'))['total'] or 0
         
-        # 2. Total sold (Hens + Roosters)
+        # 2. Total sold (Hens + Roosters) and Total Kg
         sales = batch.batchsale_set.aggregate(
             total_hens=Sum('no_of_hens'),
-            total_roosters=Sum('no_of_roosters')
+            total_roosters=Sum('no_of_roosters'),
+            total_kg=Sum('kg')
         )
         total_sold = (sales['total_hens'] or 0) + (sales['total_roosters'] or 0)
+        total_kg = sales['total_kg'] or 0
         
         # 3. Calculate remaining inventory
         no_of_chicks = batch.no_of_chicks
@@ -58,6 +64,7 @@ class BatchViewSet(viewsets.ModelViewSet): # CRUD operations for Batch model
             'mortality_rate': percentage,
             'no_of_deaths': total_deaths,
             'total_sold': total_sold,
+            'total_kg': total_kg,
             'Remaining_chicks': remaining_chicks
         })
 
@@ -74,7 +81,9 @@ class BatchViewSet(viewsets.ModelViewSet): # CRUD operations for Batch model
         return Response({
             'batch_no': batch.batch_no,
             'revenue': revenue,
-            'expense': expense,
+            'buying_price': batch.buying_price,
+            'feed_expense': expense,
+            'total_expenses': total_expenses,
             'profit_or_loss': profit_or_loss,
             'status': status
         })
@@ -93,6 +102,122 @@ class BatchViewSet(viewsets.ModelViewSet): # CRUD operations for Batch model
             'batch_no': batch.batch_no,
             'weekly_sales': list(weekly)
         })
+
+    @action(detail=True, methods=['get'])
+    def vaccinations(self, request, pk=None):
+        batch = self.get_object()
+        from datetime import timedelta
+        # Auto-provision standard 90-day protocol if not yet created
+        if not batch.vaccinationrecord_set.exists():
+            default_schedule = [
+                {
+                    'day': 1,
+                    'vaccine_name': "Marex Vaccine (HVT Strain)",
+                    'disease': "Marek's Disease / Paralysis (மாரெக்ஸ் பக்கவாத நோய்)",
+                    'dosage': "0.2 ml / chick",
+                    'route': "Subcutaneous Injection (தோல் வழி ஊசி)"
+                },
+                {
+                    'day': 7,
+                    'vaccine_name': "Ranikhet F1 (RD-F1 Strain)",
+                    'disease': "Newcastle / Ranikhet Disease (வெள்ளைக் கழிச்சல் நோய்)",
+                    'dosage': "1 Drop / chick (1 கண் சொட்டு)",
+                    'route': "Eye Drop / Nasal Drop (கண் அல்லது மூக்கு சொட்டு வழி)"
+                },
+                {
+                    'day': 10,
+                    'vaccine_name': "Nose Chipping (மூக்கு நுனி வெட்டுதல்)",
+                    'disease': "Cannibalism & Feed Wastage Prevention (கொத்துதல் & தீவன விரயம் தடுப்பு)",
+                    'dosage': "Upper 1/3 Beak Trim & Cauterize (மேல் அலகு 1/3 நுனி வெட்டுதல்)",
+                    'route': "Debeaking Machine (மின்சார மூக்கு வெட்டும் கருவி)"
+                },
+                {
+                    'day': 14,
+                    'vaccine_name': "IBD Vaccine (Gumboro Intermediate)",
+                    'disease': "Infectious Bursal Disease (கம்போரோ ரத்தக் கழிச்சல் நோய்)",
+                    'dosage': "1 Drop or Drinking Water (1 சொட்டு / குடிநீர்)",
+                    'route': "Eye Drop / Drinking Water (கண் சொட்டு அல்லது குடிநீர் வழி)"
+                },
+                {
+                    'day': 21,
+                    'vaccine_name': "Ranikhet Lasota (RD Lasota)",
+                    'disease': "Newcastle Disease (வெள்ளைக் கழிச்சல் நோய்)",
+                    'dosage': "Flock Drinking Water Mix (குடிநீர் கலவை)",
+                    'route': "Drinking Water (காலை குளிர்ந்த குடிநீர் வழி)"
+                },
+                {
+                    'day': 28,
+                    'vaccine_name': "IBD Booster (Gumboro Booster)",
+                    'disease': "IBD Secondary Immunity (கம்போரோ மறு எதிர்ப்பு சக்தி)",
+                    'dosage': "Flock Drinking Water Mix (குடிநீர் கலவை)",
+                    'route': "Drinking Water (குடிநீர் வழி)"
+                },
+                {
+                    'day': 35,
+                    'vaccine_name': "Fowl Pox Vaccine (அம்மை நோய் தடுப்பூசி)",
+                    'disease': "Fowl Pox Virus (கோழி அம்மை நோய்)",
+                    'dosage': "0.02 ml / per chick (0.02 மிலி / கோழி)",
+                    'route': "Wing Web Puncture (இறக்கைத் தோல் குத்துதல்)"
+                },
+                {
+                    'day': 45,
+                    'vaccine_name': "Ranikhet Lasota Booster (லசோட்டா மறு தடுப்பூசி)",
+                    'disease': "Newcastle Booster Reinforcement (வெள்ளைக் கழிச்சல் மறு தடுப்பூசி)",
+                    'dosage': "Flock Drinking Water Mix (குடிநீர் கலவை)",
+                    'route': "Drinking Water (குடிநீர் வழி)"
+                },
+                {
+                    'day': 55,
+                    'vaccine_name': "Albomar Deworming (அல்போமார் குடற்புழு நீக்கம்)",
+                    'disease': "Internal Parasites & Roundworms (குடற்புழுக்கள் & ஒட்டுண்ணி நீக்கம்)",
+                    'dosage': "45 ml / 100 chicks (45 மிலி / 100 கோழிகளுக்கு)",
+                    'route': "Drinking Water (காலை குடிநீர் வழி)"
+                },
+                {
+                    'day': 57,
+                    'vaccine_name': "RDVK Vaccine (Ranikhet Disease Vaccine K Strain)",
+                    'disease': "Severe Newcastle Lifetime Immunity (வெள்ளைக் கழிச்சல் தீவிர தடுப்பு)",
+                    'dosage': "0.05 ml / per chick (0.05 மிலி / கோழி)",
+                    'route': "Intramuscular Injection (தசை வழி ஊசி - மார்பு / தொடை)"
+                }
+            ]
+            records = []
+            for item in default_schedule:
+                target_date = batch.date + timedelta(days=item['day'])
+                records.append(VaccinationRecord(
+                    batch=batch,
+                    day=item['day'],
+                    vaccine_name=item['vaccine_name'],
+                    disease=item['disease'],
+                    dosage=item.get('dosage', ''),
+                    route=item['route'],
+                    scheduled_date=target_date,
+                    is_completed=False
+                ))
+            VaccinationRecord.objects.bulk_create(records)
+
+        records = batch.vaccinationrecord_set.all().order_by('day')
+        serializer = VaccinationRecordSerializer(records, many=True)
+        return Response(serializer.data)
+
+
+class VaccinationRecordViewSet(viewsets.ModelViewSet):
+    queryset = VaccinationRecord.objects.all()
+    serializer_class = VaccinationRecordSerializer
+
+    @action(detail=True, methods=['post'])
+    def toggle(self, request, pk=None):
+        record = self.get_object()
+        record.is_completed = not record.is_completed
+        if record.is_completed:
+            from datetime import date
+            admin_date = request.data.get('administered_date')
+            record.administered_date = admin_date if admin_date else date.today()
+        else:
+            record.administered_date = None
+        record.save()
+        return Response(VaccinationRecordSerializer(record).data)
+
 
 class BatchExpenseViewSet(viewsets.ModelViewSet):  # CRUD operations for BatchExpense model 
     queryset =  BatchExpense.objects.all()
@@ -126,7 +251,7 @@ def index (request):
 
 
 def login_page(request):
-    return render(request, 'farm/login.html')
+    return redirect('/')
 
 
 

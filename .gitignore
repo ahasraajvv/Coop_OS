@@ -4,9 +4,21 @@ __pycache__/
 
 # Django
 db.sqlite3
+*.sqlite3
+backups/
+staticfiles/
 
 # Virtual environment
 venv/
 
+# Node
+node_modules/
+
 # Postman
 .postman/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
