@@ -21,7 +21,7 @@ class MortalityRate(models.Model):
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
     date = models.DateTimeField()
     no_of_deaths = models.IntegerField()
-    reason_of_death = models.CharField(max_length=100)
+    reason_of_death = models.CharField(max_length=255)
 
 
 class InfraExpense(models.Model):

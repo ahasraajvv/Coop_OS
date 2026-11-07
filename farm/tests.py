@@ -82,6 +82,24 @@ class CoopOSTestCase(APITestCase):
         self.assertEqual(res_mort_check.data['Remaining_chicks'], 5)
         self.assertEqual(res_mort_check.data['mortality_rate'], 5.0)
 
+        # 6a. Attempt to record 10 deaths when only 5 remain (must fail 400)
+        res_excess = self.client.post('/api/mortality-rates/', data={
+            'batch': 101,
+            'date': '2026-02-26T10:00:00Z',
+            'no_of_deaths': 10,
+            'reason_of_death': 'Exceeding remaining'
+        }, format='json')
+        self.assertEqual(res_excess.status_code, 400)
+
+        # 6b. Attempt to record 0 deaths (must fail 400)
+        res_zero = self.client.post('/api/mortality-rates/', data={
+            'batch': 101,
+            'date': '2026-02-26T10:00:00Z',
+            'no_of_deaths': 0,
+            'reason_of_death': 'Zero deaths'
+        }, format='json')
+        self.assertEqual(res_zero.status_code, 400)
+
         # 7. Verify P&L calculation:
         # Revenue = 9000, Total Expenses = 5000 (chick cost) + 2000 (feed) = 7000
         # Net Profit = 9000 - 7000 = +2000 ("Profit")

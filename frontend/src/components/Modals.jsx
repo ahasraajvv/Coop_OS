@@ -811,23 +811,36 @@ export function LogMortalityModal({ isOpen, onClose, onSubmit, batches = [], ini
       alert('Please select a valid flock batch.');
       return;
     }
-    if (deaths <= 0) {
+    const deathCount = parseInt(deaths, 10);
+    if (!deathCount || deathCount <= 0) {
       alert('Loss count must be at least 1.');
       return;
+    }
+    if (!reason || !reason.trim()) {
+      alert('Please select or specify the diagnosed cause of mortality.');
+      return;
+    }
+
+    let isoDate;
+    try {
+      const parsedDate = date ? new Date(date) : new Date();
+      isoDate = isNaN(parsedDate.getTime()) ? new Date().toISOString() : parsedDate.toISOString();
+    } catch {
+      isoDate = new Date().toISOString();
     }
 
     setLoading(true);
     try {
       await onSubmit({
         id: initialData?.id,
-        batch: parseInt(batch),
-        date: new Date(date).toISOString(),
-        no_of_deaths: parseInt(deaths),
-        reason_of_death: reason
+        batch: parseInt(batch, 10),
+        date: isoDate,
+        no_of_deaths: deathCount,
+        reason_of_death: reason.trim()
       });
       onClose();
     } catch (err) {
-      alert('Error recording mortality: ' + err.message);
+      alert('Error recording mortality: ' + (err.message || 'Unknown network or validation error'));
     } finally {
       setLoading(false);
     }

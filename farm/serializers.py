@@ -31,6 +31,34 @@ class MortalityRateSerializer(serializers.ModelSerializer):
         model = MortalityRate
         fields = '__all__'
 
+    def validate_no_of_deaths(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Number of deaths must be at least 1.")
+        return value
+
+    def validate(self, data):
+        batch = data.get('batch')
+        no_of_deaths = data.get('no_of_deaths', 0)
+        if batch and no_of_deaths:
+            from django.db.models import Sum
+            deaths_qs = batch.mortalityrate_set.all()
+            if self.instance:
+                deaths_qs = deaths_qs.exclude(pk=self.instance.pk)
+            total_past_deaths = deaths_qs.aggregate(total=Sum('no_of_deaths'))['total'] or 0
+
+            sales = batch.batchsale_set.aggregate(
+                total_hens=Sum('no_of_hens'),
+                total_roosters=Sum('no_of_roosters')
+            )
+            total_sold = (sales['total_hens'] or 0) + (sales['total_roosters'] or 0)
+
+            remaining = batch.no_of_chicks - total_past_deaths - total_sold
+            if no_of_deaths > remaining:
+                raise serializers.ValidationError({
+                    'no_of_deaths': f"Cannot record {no_of_deaths} deaths. Only {remaining} live birds remain in Batch #{batch.batch_no}."
+                })
+        return data
+
 class InfraExpenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = InfraExpense
@@ -75,4 +103,4 @@ class BatchSaleDetailSerializer(serializers.ModelSerializer):
 class VaccinationRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = VaccinationRecord
-        fields = '__all__'
+        fields = '__all__'
