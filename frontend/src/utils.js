@@ -59,7 +59,6 @@ export function exportToCSV(filename, data, headers) {
     const values = keys.map(k => {
       let val = row[k];
       if (val === null || val === undefined) val = '';
-      if (typeof val === 'object') val = JSON.stringify(val);
       return `"${String(val).replace(/"/g, '""')}"`;
     });
     csvRows.push(values.join(','));
@@ -107,6 +106,140 @@ export const INFRA_CATEGORIES = [
   'License & Regulatory Fees'
 ];
 
+export const SALE_TYPES = [
+  { id: 'meat', label: 'Meat Sale', labelTa: 'இறைச்சி விற்பனை', icon: '🥩', unit: 'kg' },
+  { id: 'breeding', label: 'Breeding Stock', labelTa: 'இனப்பெருக்க விற்பனை', icon: '🐣', unit: 'bird' }
+];
+
+export const CUSTOMER_CATEGORIES = {
+  restaurant: {
+    id: 'restaurant',
+    label: 'Restaurant Owner',
+    labelTa: 'உணவக உரிமையாளர்',
+    icon: '🍽️',
+    color: 'amber',
+    badgeClass: 'bg-amber-50 text-amber-900 border-amber-200',
+    description: 'Hotels, non-veg mess, biryani kitchens, fast food & caterers',
+    defaultSubCategories: [
+      'Biryani Center',
+      'Non-Veg Mess',
+      'Multi-Cuisine Hotel / Restaurant',
+      'Catering & Event Services',
+      'Fast Food / Dhaba',
+      'Cloud Kitchen'
+    ]
+  },
+  butcher: {
+    id: 'butcher',
+    label: 'Butcher Shop Owner',
+    labelTa: 'இறைச்சிக் கடை',
+    icon: '🔪',
+    color: 'rose',
+    badgeClass: 'bg-rose-50 text-rose-900 border-rose-200',
+    description: 'Chicken retail stalls, dressed carcass cutters & meat marts',
+    defaultSubCategories: [
+      'Daily Chicken Stall',
+      'Wholesale Dressed Meat Center',
+      'Live & Dressed Bird Center',
+      'Mutton & Chicken Stall',
+      'Cold Storage Meat Mart'
+    ]
+  },
+  individual: {
+    id: 'individual',
+    label: 'Individual Person',
+    labelTa: 'தனிநபர் நுகர்வோர்',
+    icon: '👤',
+    color: 'emerald',
+    badgeClass: 'bg-emerald-50 text-emerald-900 border-emerald-200',
+    description: 'Retail home consumers, farm gate direct buyers & backyard hobbyists',
+    defaultSubCategories: [
+      'Farm Gate Home Consumer',
+      'Backyard Breeder / Hobbyist',
+      'Festival / Family Function Buyer',
+      'Village Resident / Neighbour',
+      'Health / Organic Meat Enthusiast'
+    ]
+  },
+  market: {
+    id: 'market',
+    label: 'Sold at Market',
+    labelTa: 'சந்தை / மொத்த விற்பனை',
+    icon: '🏪',
+    color: 'blue',
+    badgeClass: 'bg-blue-50 text-blue-900 border-blue-200',
+    description: 'Weekly shandy/sandhai stalls, wholesale mandi brokers & livestock traders',
+    defaultSubCategories: [
+      'Weekly Sunday Sandhai / Shandy',
+      'Wholesale Mandi Trader',
+      'Live Bird Commission Broker',
+      'Vehicle Poultry Transporter',
+      'Inter-District Livestock Trader'
+    ]
+  },
+  business: {
+    id: 'business',
+    label: 'Business Owner',
+    labelTa: 'வணிக உரிமையாளர்',
+    icon: '🏢',
+    color: 'purple',
+    badgeClass: 'bg-purple-50 text-purple-900 border-purple-200',
+    description: 'Commercial poultry farms, resorts, corporate kitchens & hatcheries',
+    defaultSubCategories: [
+      'Commercial Breeding Farm',
+      'Resort / Farm Stay / Eco-Tourism',
+      'Corporate Canteen / Factory Mess',
+      'Hatchery & Chick Supplier',
+      'Agro-Processing Unit'
+    ]
+  }
+};
+
+export const CUSTOMER_CATEGORY_LIST = Object.values(CUSTOMER_CATEGORIES);
+
+export function getCustomSubCategories() {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem('coopOS_custom_subcategories');
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveCustomSubCategory(category, newSubCategory) {
+  if (typeof window === 'undefined') return [];
+  const trimmed = (newSubCategory || '').trim();
+  if (!trimmed || !category) return [];
+
+  const existing = getCustomSubCategories();
+  const catList = existing[category] || [];
+  if (!catList.includes(trimmed)) {
+    catList.push(trimmed);
+  }
+  existing[category] = catList;
+  try {
+    localStorage.setItem('coopOS_custom_subcategories', JSON.stringify(existing));
+  } catch (err) {
+    console.error('Failed to save custom subcategory', err);
+  }
+  return catList;
+}
+
+export function getAllSubCategoriesForCategory(category, customers = []) {
+  if (!category || !CUSTOMER_CATEGORIES[category]) return [];
+  const defaults = CUSTOMER_CATEGORIES[category].defaultSubCategories || [];
+  const customSaved = (getCustomSubCategories()[category] || []);
+  
+  // Also collect any sub_categories already present in loaded customer objects
+  const fromCustomers = customers
+    .filter(c => (c.category || 'individual') === category && c.sub_category && c.sub_category.trim())
+    .map(c => c.sub_category.trim());
+
+  const merged = Array.from(new Set([...defaults, ...customSaved, ...fromCustomers]));
+  return merged;
+}
+
 // Bilingual dictionary
 export const translations = {
   en: {
@@ -146,6 +279,10 @@ export const translations = {
     roosters: 'Roosters',
     weightKg: 'Weight (Kg)',
     priceKg: 'Price/Kg',
+    priceBird: 'Price/Bird',
+    saleType: 'Sale Type',
+    meatSale: 'Meat Purpose (₹/Kg)',
+    breedingSale: 'Breeding Stock (₹/Bird)',
     exportCsv: 'Export CSV',
     printInvoice: 'Print Invoice',
     refresh: 'Refresh',
@@ -189,6 +326,10 @@ export const translations = {
     roosters: 'சேவல்',
     weightKg: 'எடை (கிலோ)',
     priceKg: 'கிலோ விலை',
+    priceBird: 'கோழி விலை',
+    saleType: 'விற்பனை வகை',
+    meatSale: 'இறைச்சி விற்பனை (கிலோவுக்கு)',
+    breedingSale: 'இனப்பெருக்க விற்பனை (கோழிக்கு)',
     exportCsv: 'CSV பதிவிறக்கு',
     printInvoice: 'பில் அச்சிடு',
     refresh: 'புதுப்பி',

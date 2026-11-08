@@ -31,22 +31,43 @@ class InfraExpense(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
 
 class CustomerDetail(models.Model):
+    CUSTOMER_CATEGORY_CHOICES = [
+        ('restaurant', 'Restaurant Owner'),
+        ('butcher', 'Butcher Shop Owner'),
+        ('individual', 'Individual Person'),
+        ('market', 'Sold at Market'),
+        ('business', 'Business Owner'),
+    ]
 
     customer_id = models.IntegerField(primary_key=True)
     customer_name = models.CharField(max_length=100)
     contact_number = models.CharField(max_length=15)
-    email = models.EmailField()
-    address = models.TextField()
+    email = models.EmailField(blank=True, default='')
+    address = models.TextField(blank=True, default='')
+    category = models.CharField(max_length=50, choices=CUSTOMER_CATEGORY_CHOICES, default='individual')
+    sub_category = models.CharField(max_length=100, blank=True, default='')
 
 
 class BatchSale(models.Model):
+    SALE_TYPE_CHOICES = [
+        ('meat', 'Meat Sale'),
+        ('breeding', 'Breeding Sale'),
+    ]
+    PAYMENT_METHOD_CHOICES = [
+        ('cash', 'Cash'),
+        ('gpay', 'GPay / UPI'),
+    ]
 
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
-    date     = models.DateField()
+    date = models.DateField()
+    sale_type = models.CharField(max_length=20, choices=SALE_TYPE_CHOICES, default='meat')
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='cash')
     no_of_hens = models.IntegerField()
     no_of_roosters = models.IntegerField()
-    kg  = models.DecimalField(max_digits=10, decimal_places=3,null=True, blank=True)
-    amount =  models.DecimalField(max_digits=10, decimal_places=2  )
+    kg = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
+    price_per_kg = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    price_per_bird = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
     customer = models.ForeignKey(CustomerDetail, on_delete=models.CASCADE, null=True, blank=True)
 
 

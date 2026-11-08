@@ -16,6 +16,11 @@ node_modules/
 
 # Postman
 .postman/
+postman/
+
+# Backup & Scratch
+*_backup*/
+*.bak
 
 # OS / Editor
 .DS_Store

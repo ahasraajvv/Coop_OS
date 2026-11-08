@@ -81,7 +81,7 @@ cd Coop_OS
 ```bash
 pip install -r requirements.txt
 python manage.py migrate
-python setup_db.py  # Automatically provisions superuser: admin / admin123
+python manage.py createsuperuser
 ```
 
 ### 3. Build & Run Frontend + Backend

@@ -371,218 +371,288 @@ export default function DashboardView({
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
 
       {/* =========================================================================
-          THE SINGLE BOX — EVERYTHING COMBINED INTO ONE UNIFIED CONTAINER
-          Contains:
-          1. Header Row (Batch, Date, Count)
-          2. Large Action Buttons (Add Sale, Add Expense, Log Death, New Batch)
-          3. Section Toggle Buttons Bar (Vaccine, Dead/Alive, Amount Spend, Sales with Graph, View All)
-          4. Dynamic Content Areas inside the box matching the toggles
+          COMMAND HEADER: BATCH SWITCHER, FLOCK META & PRIMARY ACTIONS
           ========================================================================= */}
       {currentBatchData && (
-        <div className="bg-white rounded-2xl border border-slate-300 p-5 sm:p-7 shadow-sm space-y-6">
-
-          {/* 1. TOP ROW: Batch Select | Date | Count (Balanced 3-column grid) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-            {/* Batch Selector Box */}
-            <div className="bg-slate-50 border-2 border-slate-900 rounded-xl p-3 flex flex-col justify-between shadow-2xs">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1 block">
-                Select Batch
-              </span>
-              <div className="flex items-center gap-1.5 w-full">
-                <button
-                  type="button"
-                  onClick={handleStepPrev}
-                  disabled={batches.length <= 1}
-                  title="Previous batch"
-                  className="w-8 h-8 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 flex items-center justify-center text-slate-800 font-bold disabled:opacity-30 disabled:pointer-events-none cursor-pointer transition shrink-0 shadow-2xs"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-
-                <div className="relative flex-1">
-                  <select
-                    value={currentBatchData.batchNo}
-                    onChange={(e) => setSelectedBatchNo(Number(e.target.value))}
-                    className="w-full appearance-none bg-slate-900 text-white font-mono font-black text-xs sm:text-sm py-2 pl-3 pr-8 rounded-lg cursor-pointer hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
-                    title="Press this to change batches"
+        <>
+          {/* 1. TOP COMMAND BAR: Batch Selector | Meta Details | Actions */}
+          <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              
+              {/* Batch Selector & Flock Metadata */}
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Batch Selector Pill */}
+                <div className="bg-slate-50 border border-slate-300 rounded-xl p-1.5 flex items-center gap-1.5 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={handleStepPrev}
+                    disabled={batches.length <= 1}
+                    title="Previous batch"
+                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-700 font-bold disabled:opacity-30 disabled:pointer-events-none cursor-pointer transition shrink-0"
                   >
-                    {batches.map((b) => (
-                      <option key={b.batch_no} value={b.batch_no} className="bg-white text-slate-900 font-bold">
-                        Batch #{b.batch_no}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-emerald-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  <div className="relative">
+                    <select
+                      value={currentBatchData.batchNo}
+                      onChange={(e) => setSelectedBatchNo(Number(e.target.value))}
+                      className="appearance-none bg-slate-900 text-white font-mono font-bold text-xs sm:text-sm py-1.5 pl-3 pr-8 rounded-lg cursor-pointer hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                      title="Select batch"
+                    >
+                      {batches.map((b) => (
+                        <option key={b.batch_no} value={b.batch_no} className="bg-white text-slate-900 font-medium">
+                          Batch #{b.batch_no}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-emerald-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleStepNext}
+                    disabled={batches.length <= 1}
+                    title="Next batch"
+                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-700 font-bold disabled:opacity-30 disabled:pointer-events-none cursor-pointer transition shrink-0"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
 
+                {/* Placement Date */}
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+                  <Calendar className="w-4 h-4 text-slate-500" />
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block leading-tight">Placed</span>
+                    <span className="font-mono font-bold text-slate-800 leading-tight">{formatDate(currentBatchData.startDate)}</span>
+                  </div>
+                </div>
+
+                {/* Initial Intake Count */}
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+                  <Package className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block leading-tight">Intake</span>
+                    <span className="font-mono font-bold text-slate-800 leading-tight">{formatNumber(currentBatchData.totalCount)} <span className="text-[10px] font-normal text-slate-500">chicks</span></span>
+                  </div>
+                </div>
+
+                {/* Age in Days Badge */}
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold">
+                  <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Day <strong className="font-mono font-bold">{currentBatchData.daysPassed}</strong> / 150 Days</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-2">
                 <button
-                  type="button"
-                  onClick={handleStepNext}
-                  disabled={batches.length <= 1}
-                  title="Next batch"
-                  className="w-8 h-8 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 flex items-center justify-center text-slate-800 font-bold disabled:opacity-30 disabled:pointer-events-none cursor-pointer transition shrink-0 shadow-2xs"
+                  onClick={() => openModal('sale', { batch: currentBatchData.batchNo })}
+                  className="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs py-2 px-3.5 rounded-lg shadow-2xs transition active:scale-95 cursor-pointer"
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  <ShoppingCart className="w-3.5 h-3.5 text-emerald-200" />
+                  <span>+ Add Sale</span>
+                </button>
+
+                <button
+                  onClick={() => openModal('expense', { batch: currentBatchData.batchNo })}
+                  className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs py-2 px-3.5 rounded-lg shadow-2xs transition active:scale-95 cursor-pointer"
+                >
+                  <Receipt className="w-3.5 h-3.5 text-amber-200" />
+                  <span>+ Add Expense</span>
+                </button>
+
+                <button
+                  onClick={() => openModal('mortality', { batch: currentBatchData.batchNo })}
+                  className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs py-2 px-3.5 rounded-lg shadow-2xs transition active:scale-95 cursor-pointer"
+                >
+                  <Skull className="w-3.5 h-3.5 text-rose-200" />
+                  <span>+ Log Death</span>
+                </button>
+
+                <button
+                  onClick={() => openModal('batch')}
+                  className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs py-2 px-3.5 rounded-lg shadow-2xs transition active:scale-95 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>+ New Batch</span>
                 </button>
               </div>
-            </div>
 
-            {/* Placement Date Card */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3 shadow-2xs">
-              <div className="w-10 h-10 rounded-xl bg-slate-200/80 text-slate-700 flex items-center justify-center shrink-0">
-                <Calendar className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-                  Placement Date
-                </span>
-                <span className="text-sm font-black font-mono text-slate-900">
-                  {formatDate(currentBatchData.startDate)}
-                </span>
-              </div>
-            </div>
-
-            {/* Initial Count Card */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3 shadow-2xs">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
-                <Package className="w-5 h-5 text-emerald-700" />
-              </div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-                  Initial Count
-                </span>
-                <span className="text-sm font-black font-mono text-slate-900">
-                  {formatNumber(currentBatchData.totalCount)}{' '}
-                  <span className="text-xs font-semibold text-slate-500">Chicks</span>
-                </span>
-              </div>
             </div>
           </div>
 
-          {/* 2. LARGER ACTION BUTTONS: Add Sale, Add Expense, Log Death, New Batch */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <button
-              onClick={() => openModal('sale', { batch: currentBatchData.batchNo })}
-              className="flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm py-3 px-4 rounded-xl shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
-            >
-              <ShoppingCart className="w-4 h-4 text-emerald-200" />
-              <span>+ Add Sale</span>
-            </button>
-
-            <button
-              onClick={() => openModal('expense', { batch: currentBatchData.batchNo })}
-              className="flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs sm:text-sm py-3 px-4 rounded-xl shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
-            >
-              <Receipt className="w-4 h-4 text-amber-200" />
-              <span>+ Add Expense</span>
-            </button>
-
-            <button
-              onClick={() => openModal('mortality', { batch: currentBatchData.batchNo })}
-              className="flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm py-3 px-4 rounded-xl shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
-            >
-              <Skull className="w-4 h-4 text-rose-200" />
-              <span>+ Log Death</span>
-            </button>
-
-            <button
-              onClick={() => openModal('batch')}
-              className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm py-3 px-4 rounded-xl shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
-            >
-              <Plus className="w-4 h-4 text-emerald-400" />
-              <span>+ New Batch</span>
-            </button>
-          </div>
-
-          {/* 3. SECTION TOGGLE CONTROLS BAR (Switch or reveal each module inside the single box) */}
-          <div className="bg-slate-100 p-1.5 rounded-xl border border-slate-200">
-            <div className="flex items-center justify-between px-2 pt-1 pb-1.5">
-              <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">
-                Module View Toggles (Click to switch or view all)
-              </span>
-              <span className="text-[10px] font-mono text-slate-400">
-                Active: {activeToggleTab.toUpperCase()}
-              </span>
+          {/* 2. EXECUTIVE 4-METRIC KPI RAIL */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            {/* KPI 1: Live Flock Vitality */}
+            <div className="bg-white rounded-xl border border-slate-200/90 p-4 shadow-card">
+              <div className="flex items-center justify-between text-slate-500 mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Live Shed Stock</span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                  {currentBatchData.survivalPercent.toFixed(1)}% Survival
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-slate-900">
+                  {formatNumber(currentBatchData.totalAlive)}
+                </span>
+                <span className="text-xs font-semibold text-slate-500">birds alive</span>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                <span>Intake: <strong className="text-slate-800 font-mono">{currentBatchData.totalCount}</strong></span>
+                <span>Sold: <strong className="text-slate-800 font-mono">{currentBatchData.totalSold}</strong></span>
+                <span>Deaths: <strong className="text-rose-600 font-mono">{currentBatchData.totalDeaths} ({currentBatchData.mortalityPercent.toFixed(1)}%)</strong></span>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-              {/* Toggle 1: Vaccine */}
-              <button
-                type="button"
-                onClick={() => setActiveToggleTab('vaccine')}
-                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  activeToggleTab === 'vaccine'
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
-                }`}
-              >
-                <Syringe className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Vaccine Details</span>
-              </button>
+            {/* KPI 2: Net Flock Profit */}
+            <div className="bg-white rounded-xl border border-slate-200/90 p-4 shadow-card">
+              <div className="flex items-center justify-between text-slate-500 mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Net Flock Profit</span>
+                <span className={`inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                  currentBatchData.isProfit
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                    : 'text-rose-700 bg-rose-50 border-rose-200'
+                }`}>
+                  {currentBatchData.totalExpenses > 0
+                    ? `${((currentBatchData.profit / currentBatchData.totalExpenses) * 100).toFixed(1)}% Margin`
+                    : '0% Margin'}
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className={`text-2xl sm:text-3xl font-extrabold font-mono tracking-tight ${
+                  currentBatchData.isProfit ? 'text-emerald-700' : 'text-rose-700'
+                }`}>
+                  {currentBatchData.profit >= 0 ? '+' : ''}{formatCurrency(currentBatchData.profit)}
+                </span>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                <span>Gross Sales: <strong className="text-slate-800 font-mono">{formatCurrency(currentBatchData.income)}</strong></span>
+                <span>Status: <span className={`font-bold ${currentBatchData.isProfit ? 'text-emerald-700' : 'text-rose-700'}`}>
+                  {currentBatchData.isProfit ? 'Profitable' : currentBatchData.isLoss ? 'In Loss' : 'Breakeven'}
+                </span></span>
+              </div>
+            </div>
 
-              {/* Toggle 2: Dead / Alive */}
-              <button
-                type="button"
-                onClick={() => setActiveToggleTab('population')}
-                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  activeToggleTab === 'population'
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
-                }`}
-              >
-                <HeartPulse className="w-3.5 h-3.5 text-rose-500" />
-                <span>Dead / Alive</span>
-              </button>
+            {/* KPI 3: Total Spending */}
+            <div className="bg-white rounded-xl border border-slate-200/90 p-4 shadow-card">
+              <div className="flex items-center justify-between text-slate-500 mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Flock Expenses</span>
+                <span className="text-[11px] font-mono text-slate-400">DOC + Feed</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-slate-900">
+                  {formatCurrency(currentBatchData.totalExpenses)}
+                </span>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                <span>Chicks: <strong className="text-slate-700 font-mono">{formatCurrency(currentBatchData.chickBuyingPrice)}</strong></span>
+                <span>Feed & Ops: <strong className="text-slate-700 font-mono">{formatCurrency(currentBatchData.feedExpenses)}</strong></span>
+              </div>
+            </div>
 
-              {/* Toggle 3: Amount Spend */}
-              <button
-                type="button"
-                onClick={() => setActiveToggleTab('spending')}
-                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  activeToggleTab === 'spending'
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
-                }`}
-              >
-                <DollarSign className="w-3.5 h-3.5 text-amber-500" />
-                <span>Amount Spend</span>
-              </button>
+            {/* KPI 4: Unit Economics */}
+            <div className="bg-white rounded-xl border border-slate-200/90 p-4 shadow-card">
+              <div className="flex items-center justify-between text-slate-500 mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Cost to Raise 1 Bird</span>
+                <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">Realized Cost</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-slate-900">
+                  {formatCurrency(currentBatchData.costPerBird)}
+                </span>
+                <span className="text-xs font-semibold text-slate-500">/ bird</span>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                <span>Target 60%: <strong className="text-emerald-700 font-mono">{formatCurrency(currentBatchData.sellPrice60Markup)}</strong></span>
+                <span>70%: <strong className="text-emerald-700 font-mono">{formatCurrency(currentBatchData.sellPrice70Markup)}</strong></span>
+              </div>
+            </div>
 
-              {/* Toggle 4: Sales with Graph */}
-              <button
-                type="button"
-                onClick={() => setActiveToggleTab('sales')}
-                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  activeToggleTab === 'sales'
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
-                }`}
-              >
-                <BarChart3 className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Sales with Graph</span>
-              </button>
+          </div>
 
-              {/* Toggle 5: Show All */}
+          {/* 3. SECTION TOGGLE CONTROLS BAR (Segmented Control) */}
+          <div className="bg-slate-200/70 p-1 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setActiveToggleTab('all')}
-                className={`col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
+                className={`flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer ${
                   activeToggleTab === 'all'
-                    ? 'bg-emerald-700 text-white shadow-xs'
-                    : 'bg-white text-emerald-800 hover:bg-emerald-50 border border-emerald-300'
+                    ? 'bg-white text-slate-900 font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <Eye className="w-3.5 h-3.5" />
-                <span>Show All Parts</span>
+                <Eye className="w-3.5 h-3.5 text-slate-500" />
+                <span>Show All Modules</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveToggleTab('vaccine')}
+                className={`flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  activeToggleTab === 'vaccine'
+                    ? 'bg-white text-slate-900 font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5 text-amber-500" />
+                <span>Vaccine & Timeline</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveToggleTab('population')}
+                className={`flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  activeToggleTab === 'population'
+                    ? 'bg-white text-slate-900 font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <HeartPulse className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Flock Population</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveToggleTab('spending')}
+                className={`flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  activeToggleTab === 'spending'
+                    ? 'bg-white text-slate-900 font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <DollarSign className="w-3.5 h-3.5 text-slate-700" />
+                <span>Spending & Margins</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveToggleTab('sales')}
+                className={`flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  activeToggleTab === 'sales'
+                    ? 'bg-white text-slate-900 font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Sales with Graph</span>
               </button>
             </div>
+
+            <span className="text-[10px] font-mono text-slate-500 hidden sm:inline px-2">
+              Viewing: <strong>{activeToggleTab.toUpperCase()}</strong>
+            </span>
           </div>
 
-          {/* 4. DYNAMIC MODULES INSIDE THE SINGLE BOX */}
-          <div className="space-y-4 pt-1">
+          {/* 4. DYNAMIC MODULES SECTION */}
+          <div className="space-y-4">
 
             {/* MODULE A: VACCINE DETAILS (Day Counter with Vaccine Timeline) */}
             {(activeToggleTab === 'vaccine' || activeToggleTab === 'all') && (
@@ -722,7 +792,7 @@ export default function DashboardView({
                     <span className="text-xs font-bold text-slate-900 uppercase tracking-wide">
                       Dead / Alive Count (Flock Population)
                     </span>
-                    <span className="text-[10.5px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-100/70 border border-emerald-200 text-emerald-800">
+                    <span className="text-[10.5px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800">
                       {formatNumber(currentBatchData.totalAlive)} Alive • {formatNumber(currentBatchData.totalDeaths)} Dead
                     </span>
                   </div>
@@ -741,13 +811,38 @@ export default function DashboardView({
 
                 {/* Module Content */}
                 {!collapsedSections.population && (
-                  <div className="p-4 bg-white border-t border-slate-200">
+                  <div className="p-4 bg-white border-t border-slate-200 space-y-3.5">
+                    
+                    {/* 4-Step Mathematical Biological Reconciliation Rail */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
+                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                        <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider block">Initial Intake</span>
+                        <span className="text-lg font-black font-mono text-slate-900 mt-1 block">{formatNumber(currentBatchData.totalCount)}</span>
+                        <span className="text-[10px] text-slate-400">DOC chicks</span>
+                      </div>
+                      <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-lg">
+                        <span className="text-[10px] font-bold uppercase text-rose-800 tracking-wider block">Mortality Deaths</span>
+                        <span className="text-lg font-black font-mono text-rose-700 mt-1 block">- {formatNumber(currentBatchData.totalDeaths)}</span>
+                        <span className="text-[10px] text-rose-600 font-medium">{currentBatchData.mortalityPercent.toFixed(1)}% rate</span>
+                      </div>
+                      <div className="p-3 bg-sky-50/70 border border-sky-200 rounded-lg">
+                        <span className="text-[10px] font-bold uppercase text-sky-800 tracking-wider block">Sold Off-Take</span>
+                        <span className="text-lg font-black font-mono text-sky-700 mt-1 block">- {formatNumber(currentBatchData.totalSold)}</span>
+                        <span className="text-[10px] text-sky-600 font-medium">({currentBatchData.totalHens}H / {currentBatchData.totalRoosters}R)</span>
+                      </div>
+                      <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-lg">
+                        <span className="text-[10px] font-bold uppercase text-emerald-800 tracking-wider block">In Shed Alive</span>
+                        <span className="text-lg font-black font-mono text-emerald-800 mt-1 block">= {formatNumber(currentBatchData.totalAlive)}</span>
+                        <span className="text-[10px] text-emerald-700 font-bold">{currentBatchData.survivalPercent.toFixed(1)}% Survival</span>
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                       {/* Alive Card */}
-                      <div className="bg-emerald-50/80 border border-emerald-300 p-4 rounded-xl">
+                      <div className="bg-emerald-50/60 border border-emerald-200 p-4 rounded-xl">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">
-                            Total Alive
+                            Total Healthy Birds In Shed
                           </span>
                           <span className="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300">
                             {currentBatchData.survivalPercent.toFixed(1)}% Survival
@@ -757,54 +852,55 @@ export default function DashboardView({
                           {formatNumber(currentBatchData.totalAlive)}
                         </div>
                         <p className="text-[11px] text-emerald-700 font-medium mt-0.5">
-                          Healthy birds currently in shed
+                          Active commercial flock population in farm shed
                         </p>
                       </div>
 
                       {/* Death Card */}
-                      <div className="bg-rose-50/80 border border-rose-300 p-4 rounded-xl">
+                      <div className="bg-rose-50/60 border border-rose-200 p-4 rounded-xl">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-[11px] font-bold text-rose-900 uppercase tracking-wider">
-                            Total Death
+                            Total Mortality Loss
                           </span>
                           <span className="text-[10px] font-mono font-bold bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full border border-rose-300">
                             {currentBatchData.mortalityPercent.toFixed(1)}% Mortality
                           </span>
                         </div>
-                        <div className="text-2xl sm:text-3xl font-black font-mono text-rose-800">
-                          💀 {formatNumber(currentBatchData.totalDeaths)}
+                        <div className="text-2xl sm:text-3xl font-black font-mono text-rose-700">
+                          {formatNumber(currentBatchData.totalDeaths)} <span className="text-sm font-semibold text-rose-600">deaths</span>
                         </div>
                         <p className="text-[11px] text-rose-700 font-medium mt-0.5">
-                          Recorded mortality ({currentBatchData.totalDeaths} of {currentBatchData.totalCount} chicks)
+                          Recorded losses ({currentBatchData.totalDeaths} of {currentBatchData.totalCount} intake chicks)
                         </p>
                       </div>
                     </div>
+
                   </div>
                 )}
               </div>
             )}
 
-            {/* MODULE C: AMOUNT SPEND & MARGINS */}
+            {/* MODULE C: AMOUNT SPEND & MARGINS (Polished Enterprise Styling - No Purple) */}
             {(activeToggleTab === 'spending' || activeToggleTab === 'all') && (
-              <div className="border border-amber-300 rounded-xl overflow-hidden bg-white shadow-2xs">
+              <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
                 {/* Module Bar Header */}
                 <div
                   onClick={() => toggleSection('spending')}
-                  className="p-3.5 bg-amber-50/70 hover:bg-amber-100/70 flex items-center justify-between cursor-pointer transition select-none"
+                  className="p-3.5 bg-slate-50 hover:bg-slate-100 flex items-center justify-between cursor-pointer transition select-none"
                 >
                   <div className="flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-amber-800" />
-                    <span className="text-xs font-bold text-amber-900 uppercase tracking-wide">
+                    <DollarSign className="w-4 h-4 text-slate-700" />
+                    <span className="text-xs font-bold text-slate-900 uppercase tracking-wide">
                       Amount Spend & Margins
                     </span>
-                    <span className="text-sm font-black font-mono text-amber-950">
+                    <span className="text-sm font-black font-mono text-slate-900">
                       {formatCurrency(currentBatchData.totalExpenses)}
                     </span>
                   </div>
 
                   <button
                     type="button"
-                    className="p-1 rounded-md text-amber-800 hover:text-amber-950"
+                    className="p-1 rounded-md text-slate-500 hover:text-slate-800"
                   >
                     {collapsedSections.spending ? (
                       <ChevronDown className="w-4 h-4" />
@@ -816,8 +912,10 @@ export default function DashboardView({
 
                 {/* Module Content */}
                 {!collapsedSections.spending && (
-                  <div className="p-4 bg-white border-t border-amber-200 space-y-3">
+                  <div className="p-4 bg-white border-t border-slate-200 space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      
+                      {/* Cost per bird */}
                       <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
                         <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                           Cost of Raising 1 Chicken
@@ -826,40 +924,46 @@ export default function DashboardView({
                           {formatCurrency(currentBatchData.costPerBird)}
                           <span className="text-xs font-normal text-slate-500"> / bird</span>
                         </div>
-                        <p className="text-[10px] text-slate-500 mt-1">
+                        <p className="text-[10px] text-slate-500 mt-1 font-mono">
                           Spend ({formatCurrency(currentBatchData.totalExpenses)}) ÷ {currentBatchData.totalAlive} alive
                         </p>
                       </div>
 
-                      <div className="bg-purple-50/80 border border-purple-200 p-3.5 rounded-xl">
+                      {/* 60% Margin Target Sell Price */}
+                      <div className="bg-emerald-50/60 border border-emerald-200 p-3.5 rounded-xl">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10.5px] font-bold text-purple-900 uppercase tracking-wider">
+                          <span className="text-[10.5px] font-bold text-emerald-950 uppercase tracking-wider">
                             Sell Price @ 60% Margin
                           </span>
-                          <Percent className="w-3 h-3 text-purple-600" />
+                          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-mono">
+                            Optimal
+                          </span>
                         </div>
-                        <div className="text-xl sm:text-2xl font-black font-mono text-purple-900">
+                        <div className="text-xl sm:text-2xl font-black font-mono text-emerald-900">
                           {formatCurrency(currentBatchData.sellPrice60Markup)}
-                          <span className="text-xs font-normal text-purple-600"> / bird</span>
+                          <span className="text-xs font-normal text-emerald-700"> / bird</span>
                         </div>
-                        <p className="text-[10px] text-purple-700 mt-1 font-medium">
-                          + {formatCurrency(currentBatchData.profitPerBird60)} profit margin
+                        <p className="text-[10px] text-emerald-700 mt-1 font-medium font-mono">
+                          + {formatCurrency(currentBatchData.profitPerBird60)} profit margin / bird
                         </p>
                       </div>
 
-                      <div className="bg-purple-50/80 border border-purple-200 p-3.5 rounded-xl">
+                      {/* 70% Margin Target Sell Price */}
+                      <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10.5px] font-bold text-purple-900 uppercase tracking-wider">
+                          <span className="text-[10.5px] font-bold text-slate-800 uppercase tracking-wider">
                             Sell Price @ 70% Margin
                           </span>
-                          <Percent className="w-3 h-3 text-purple-600" />
+                          <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded font-mono">
+                            Breeder
+                          </span>
                         </div>
-                        <div className="text-xl sm:text-2xl font-black font-mono text-purple-900">
+                        <div className="text-xl sm:text-2xl font-black font-mono text-slate-900">
                           {formatCurrency(currentBatchData.sellPrice70Markup)}
-                          <span className="text-xs font-normal text-purple-600"> / bird</span>
+                          <span className="text-xs font-normal text-slate-500"> / bird</span>
                         </div>
-                        <p className="text-[10px] text-purple-700 mt-1 font-medium">
-                          + {formatCurrency(currentBatchData.profitPerBird70)} profit margin
+                        <p className="text-[10px] text-slate-600 mt-1 font-medium font-mono">
+                          + {formatCurrency(currentBatchData.profitPerBird70)} profit margin / bird
                         </p>
                       </div>
                     </div>
@@ -1004,9 +1108,18 @@ export default function DashboardView({
                                   className="bg-white border border-slate-200 rounded-xl p-2.5 flex items-center justify-between hover:border-slate-300 transition shadow-2xs"
                                 >
                                   <div className="space-y-0.5">
-                                    <span className="text-xs font-bold text-slate-900 block">
-                                      {s.customer?.customer_name || 'Walk-in Buyer'}
-                                    </span>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-xs font-bold text-slate-900">
+                                        {s.customer?.customer_name || 'Walk-in Buyer'}
+                                      </span>
+                                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                        s.sale_type === 'breeding'
+                                          ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                          : 'bg-slate-100 text-slate-700 border-slate-200'
+                                      }`}>
+                                        {s.sale_type === 'breeding' ? 'Breeding Stock' : 'Live Meat'}
+                                      </span>
+                                    </div>
                                     <span className="text-[10.5px] text-slate-500 font-mono block">
                                       {formatDate(s.date)} • {totalBirds} birds ({s.no_of_hens || 0}H / {s.no_of_roosters || 0}R)
                                       {s.kg ? ` • ${s.kg} kg` : ''}
@@ -1017,11 +1130,15 @@ export default function DashboardView({
                                     <span className="text-xs sm:text-sm font-black font-mono text-emerald-700 block">
                                       +{formatCurrency(s.amount)}
                                     </span>
-                                    {s.kg > 0 && s.amount > 0 && (
-                                      <span className="text-[9.5px] text-slate-400 font-mono">
+                                    {s.sale_type === 'breeding' ? (
+                                      <span className="text-[9.5px] text-amber-700 font-mono font-bold block">
+                                        ₹{s.price_per_bird || (totalBirds > 0 ? (s.amount / totalBirds).toFixed(0) : 0)}/bird
+                                      </span>
+                                    ) : s.kg > 0 && s.amount > 0 ? (
+                                      <span className="text-[9.5px] text-slate-400 font-mono block">
                                         ₹{(s.amount / s.kg).toFixed(1)}/kg
                                       </span>
-                                    )}
+                                    ) : null}
                                   </div>
                                 </div>
                               );
@@ -1094,8 +1211,7 @@ export default function DashboardView({
             )}
 
           </div>
-
-        </div>
+        </>
       )}
 
       {/* =========================================================================

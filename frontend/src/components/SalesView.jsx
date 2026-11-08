@@ -44,7 +44,7 @@ import {
   Line,
   ComposedChart
 } from 'recharts';
-import { formatCurrency, formatNumber, formatDate, exportToCSV, translations } from '../utils';
+import { formatCurrency, formatNumber, formatDate, exportToCSV, CUSTOMER_CATEGORIES, translations } from '../utils';
 
 // Custom Tooltip for Sales Analytics Chart
 function SalesChartTooltip({ active, payload, label }) {
@@ -101,12 +101,96 @@ export default function SalesView({
   const [activeTab, setActiveTab] = useState('ledger');
   const [customerFilter, setCustomerFilter] = useState('ALL');
   const [datePreset, setDatePreset] = useState('ALL'); // 'ALL' | '7D' | '30D' | 'THIS_MONTH'
+  const [saleTypeFilter, setSaleTypeFilter] = useState('ALL'); // 'ALL' | 'meat' | 'breeding'
+  const [paymentFilter, setPaymentFilter] = useState('ALL'); // 'ALL' | 'cash' | 'gpay'
   const [sortBy, setSortBy] = useState('DATE_DESC'); // 'DATE_DESC' | 'DATE_ASC' | 'AMOUNT_DESC' | 'KG_DESC' | 'RATE_DESC'
 
   // Sorted batches by batch_no descending
   const sortedBatches = useMemo(() => {
     return [...batches].sort((a, b) => Number(b.batch_no) - Number(a.batch_no));
   }, [batches]);
+
+  // Interactive Batch-by-Batch Sales Aggregation Cards
+  const batchSalesCards = useMemo(() => {
+    const overall = {
+      batch_no: 'ALL',
+      label: 'All Batches',
+      date: 'All Time',
+      chicks: batches.reduce((sum, b) => sum + (Number(b.no_of_chicks) || 0), 0),
+      totalSales: 0,
+      cashSales: 0,
+      gpaySales: 0,
+      meatSales: 0,
+      meatKg: 0,
+      breedingSales: 0,
+      breedingBirds: 0,
+      totalBirdsSold: 0,
+      count: sales.length
+    };
+
+    const batchMap = {};
+    batches.forEach((b) => {
+      batchMap[b.batch_no] = {
+        batch_no: b.batch_no,
+        date: b.date,
+        chicks: Number(b.no_of_chicks) || 0,
+        buyingPrice: Number(b.buying_price) || 0,
+        totalSales: 0,
+        cashSales: 0,
+        gpaySales: 0,
+        meatSales: 0,
+        meatKg: 0,
+        breedingSales: 0,
+        breedingBirds: 0,
+        totalBirdsSold: 0,
+        count: 0
+      };
+    });
+
+    sales.forEach((s) => {
+      const bNo = s.batch?.batch_no || s.batch;
+      const amt = Number(s.amount) || 0;
+      const hens = Number(s.no_of_hens) || 0;
+      const roosters = Number(s.no_of_roosters) || 0;
+      const birds = hens + roosters;
+      const kg = Number(s.kg) || 0;
+      const isBreeding = s.sale_type === 'breeding';
+      const isGpay = s.payment_method === 'gpay';
+
+      overall.totalSales += amt;
+      overall.totalBirdsSold += birds;
+      if (isGpay) overall.gpaySales += amt;
+      else overall.cashSales += amt;
+
+      if (isBreeding) {
+        overall.breedingSales += amt;
+        overall.breedingBirds += birds;
+      } else {
+        overall.meatSales += amt;
+        overall.meatKg += kg;
+      }
+
+      if (bNo && batchMap[bNo]) {
+        const b = batchMap[bNo];
+        b.totalSales += amt;
+        b.totalBirdsSold += birds;
+        b.count += 1;
+        if (isGpay) b.gpaySales += amt;
+        else b.cashSales += amt;
+
+        if (isBreeding) {
+          b.breedingSales += amt;
+          b.breedingBirds += birds;
+        } else {
+          b.meatSales += amt;
+          b.meatKg += kg;
+        }
+      }
+    });
+
+    const list = sortedBatches.map((b) => batchMap[b.batch_no]).filter(Boolean);
+    return [overall, ...list];
+  }, [batches, sales, sortedBatches]);
 
   // Stepper handlers (< and >) for 1-click batch cycling
   const handleStepPrev = () => {
@@ -155,6 +239,18 @@ export default function SalesView({
         return false;
       }
 
+      // Category filter (Meat vs Breeding)
+      if (saleTypeFilter !== 'ALL') {
+        const type = s.sale_type || 'meat';
+        if (type !== saleTypeFilter) return false;
+      }
+
+      // Payment filter (Cash vs GPay)
+      if (paymentFilter !== 'ALL') {
+        const method = s.payment_method || 'cash';
+        if (method !== paymentFilter) return false;
+      }
+
       // 3. Date preset filter
       if (s.date && datePreset !== 'ALL') {
         const saleDate = new Date(s.date);
@@ -182,7 +278,7 @@ export default function SalesView({
 
       return true;
     });
-  }, [sales, selectedBatchFilter, customerFilter, datePreset, searchQuery]);
+  }, [sales, selectedBatchFilter, customerFilter, datePreset, searchQuery, saleTypeFilter, paymentFilter]);
 
   // Sorted sales dataset
   const sortedSales = useMemo(() => {
@@ -214,11 +310,36 @@ export default function SalesView({
     let minRate = Infinity;
     let maxRate = -Infinity;
 
+    let meatRev = 0;
+    let meatKg = 0;
+    let meatBirds = 0;
+    let breedingRev = 0;
+    let breedingBirds = 0;
+    let totalCash = 0;
+    let totalGpay = 0;
+
     filteredSales.forEach((s) => {
+      const isBreeding = s.sale_type === 'breeding';
       const amt = Number(s.amount) || 0;
       const hens = Number(s.no_of_hens) || 0;
       const roosters = Number(s.no_of_roosters) || 0;
+      const birds = hens + roosters;
       const kg = Number(s.kg) || 0;
+
+      if (isBreeding) {
+        breedingRev += amt;
+        breedingBirds += birds;
+      } else {
+        meatRev += amt;
+        meatKg += kg;
+        meatBirds += birds;
+      }
+
+      if (s.payment_method === 'gpay') {
+        totalGpay += amt;
+      } else {
+        totalCash += amt;
+      }
 
       totalRev += amt;
       totalHens += hens;
@@ -278,7 +399,19 @@ export default function SalesView({
     const grossProfit = totalRev - batchTotalCost;
     const grossMarginPct = totalRev > 0 ? (grossProfit / totalRev) * 100 : 0;
 
+    const avgMeatRateKg = meatKg > 0 ? meatRev / meatKg : 0;
+    const avgBreedingRateBird = breedingBirds > 0 ? breedingRev / breedingBirds : 0;
+
     return {
+      meatRev,
+      meatKg,
+      meatBirds,
+      breedingRev,
+      breedingBirds,
+      totalCash,
+      totalGpay,
+      avgMeatRateKg,
+      avgBreedingRateBird,
       totalRev,
       totalBirds,
       totalHens,
@@ -375,18 +508,25 @@ export default function SalesView({
       const rate = kg > 0 ? amt / kg : 0;
       const avgW = totalBirds > 0 ? kg / totalBirds : 0;
 
+      const isBreeding = s.sale_type === 'breeding';
+      const appliedRate = isBreeding
+        ? (s.price_per_bird || (totalBirds > 0 ? amt / totalBirds : 0)).toFixed(2) + ' / bird'
+        : (kg > 0 ? amt / kg : 0).toFixed(2) + ' / kg';
+
       return {
         'Invoice ID': `INV-${s.id.toString().padStart(4, '0')}`,
         Date: s.date,
+        Category: isBreeding ? 'Breeding Stock' : 'Meat Purpose',
+        'Payment Method': s.payment_method === 'gpay' ? 'GPay / UPI' : 'Cash',
         'Batch No': s.batch?.batch_no || s.batch,
         'Customer Name': s.customer?.customer_name || 'Walk-in Buyer',
         'Contact Number': s.customer?.contact_number || 'N/A',
         Hens: s.no_of_hens,
         Roosters: s.no_of_roosters,
         'Total Birds': totalBirds,
-        'Live Weight (Kg)': kg.toFixed(2),
+        'Live Weight (Kg)': kg > 0 ? kg.toFixed(2) : 'N/A',
         'Avg Weight Per Bird (Kg)': avgW.toFixed(2),
-        'Realized Rate / Kg (INR)': rate.toFixed(2),
+        'Applied Rate': appliedRate,
         'Total Realization (INR)': amt.toFixed(2)
       };
     });
@@ -394,39 +534,38 @@ export default function SalesView({
   };
 
   return (
-    <div className="space-y-6">
-      {/* 1. Header Toolbar & Context Navigation */}
-      <div className="bg-white p-5 rounded-xl border border-slate-300 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center text-sm font-bold shadow-xs">
-              <ShoppingCart className="w-4 h-4" />
+    <div className="space-y-5">
+      {/* 1. Executive Header Command Bar */}
+      <header className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-emerald-700 text-white flex items-center justify-center text-xl font-bold shadow-xs shrink-0">
+            🐔
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                Farm Gate Commercial Sales & Off-Take Hub
+              </h1>
+              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                Live Shed Register
+              </span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-slate-900 tracking-tight">
-                  Commercial Bird Sales & Market Realization
-                </h1>
-                <span className="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
-                  {filteredSales.length} Transactions
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 font-mono mt-0.5">
-                Farm-gate live off-take, carcass weight grading, rate/kg realization & customer accounts
-              </p>
-            </div>
+            <p className="text-xs text-slate-500 mt-0.5 font-medium">
+              Live carcass meat weighing (₹/kg), breeding stock dispatch (₹/bird) & digital payment collection
+            </p>
           </div>
         </div>
 
-        {/* View Tabs & Quick Actions */}
+        {/* Workstation View Tabs & Quick Actions */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Workstation View Tabs */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-semibold">
+          {/* Main Navigation Tabs */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
             <button
               onClick={() => setActiveTab('ledger')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
                 activeTab === 'ledger'
-                  ? 'bg-white text-slate-900 shadow-xs'
+                  ? 'bg-white text-slate-900 font-bold shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -435,9 +574,9 @@ export default function SalesView({
             </button>
             <button
               onClick={() => setActiveTab('analytics')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
                 activeTab === 'analytics'
-                  ? 'bg-white text-slate-900 shadow-xs'
+                  ? 'bg-white text-slate-900 font-bold shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -446,9 +585,9 @@ export default function SalesView({
             </button>
             <button
               onClick={() => setActiveTab('economics')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
                 activeTab === 'economics'
-                  ? 'bg-white text-slate-900 shadow-xs'
+                  ? 'bg-white text-slate-900 font-bold shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -457,284 +596,233 @@ export default function SalesView({
             </button>
           </div>
 
-          {/* Export CSV */}
-          <button
-            onClick={handleExportCSV}
-            title="Download complete sales ledger CSV"
-            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 transition cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>CSV</span>
-          </button>
-
-          {/* Print Register */}
+          {/* Quick Print Register */}
           <button
             onClick={() => window.print()}
             title="Print sales register"
-            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 transition cursor-pointer"
+            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 transition cursor-pointer"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Print</span>
+            <span className="hidden sm:inline">Print</span>
           </button>
 
-          {/* Primary: Record Sale */}
+          {/* Primary Action: Record New Sale */}
           <button
             onClick={() => openModal('sale')}
-            className="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-xs transition cursor-pointer"
+            className="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs transition cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Record Sale</span>
+            <span>+ Record New Sale</span>
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* 2. Scope & Ergonomic Multi-Filter Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-300 shadow-xs space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Left: Batch Selector Stepper & Pills */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1 select-none">
-              <Layers className="w-3.5 h-3.5 text-slate-400" />
-              <span>Batch Scope:</span>
+      {/* 2. Interactive Per-Batch Sales Toggling Cards Rail */}
+      <section className="space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <span>📦</span> Select Flock / Batch Scope:
             </span>
-
-            {/* Stepper Navigation */}
-            <div className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5">
-              <button
-                type="button"
-                onClick={handleStepPrev}
-                disabled={sortedBatches.length <= 1}
-                title="Previous batch"
-                className="p-1 text-slate-600 hover:text-slate-900 hover:bg-white rounded disabled:opacity-30 disabled:pointer-events-none cursor-pointer transition"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="px-1.5 text-[10px] font-mono font-bold text-slate-400 select-none uppercase">
-                Step
-              </span>
-              <button
-                type="button"
-                onClick={handleStepNext}
-                disabled={sortedBatches.length <= 1}
-                title="Next batch"
-                className="p-1 text-slate-600 hover:text-slate-900 hover:bg-white rounded disabled:opacity-30 disabled:pointer-events-none cursor-pointer transition"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Batch Selector Dropdown */}
-            <select
-              value={selectedBatchFilter}
-              onChange={(e) => setSelectedBatchFilter(e.target.value)}
-              className="bg-slate-50 text-xs font-mono font-bold text-slate-800 px-3 py-1.5 rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-emerald-600 cursor-pointer"
-            >
-              <option value="ALL">All Commercial Batches ({batches.length})</option>
-              {batches.map((b) => (
-                <option key={b.batch_no} value={b.batch_no}>
-                  Batch #{b.batch_no} ({b.no_of_chicks} chicks • Placed {b.date})
-                </option>
-              ))}
-            </select>
-
-            {/* Quick Batch Pills */}
-            <div className="hidden sm:flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setSelectedBatchFilter('ALL')}
-                className={`px-2.5 py-1 rounded text-xs font-bold transition cursor-pointer ${
-                  selectedBatchFilter === 'ALL'
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-                }`}
-              >
-                All
-              </button>
-              {sortedBatches.slice(0, 3).map((b) => (
-                <button
-                  key={b.batch_no}
-                  type="button"
-                  onClick={() => setSelectedBatchFilter(b.batch_no)}
-                  className={`px-2.5 py-1 rounded text-xs font-mono font-bold transition cursor-pointer ${
-                    selectedBatchFilter.toString() === b.batch_no.toString()
-                      ? 'bg-emerald-700 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-                  }`}
-                >
-                  #{b.batch_no}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Right: Customer & Date Presets */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Customer Filter */}
-            <div className="flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-slate-400" />
-              <select
-                value={customerFilter}
-                onChange={(e) => setCustomerFilter(e.target.value)}
-                className="bg-slate-50 text-xs font-medium text-slate-800 px-3 py-1.5 rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-emerald-600 cursor-pointer"
-              >
-                <option value="ALL">All Buyers ({customers.length})</option>
-                {customers.map((c) => (
-                  <option key={c.customer_id} value={c.customer_id}>
-                    {c.customer_name} {c.contact_number ? `(${c.contact_number})` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Date Range Preset Buttons */}
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-semibold">
-              <button
-                onClick={() => setDatePreset('ALL')}
-                className={`px-2.5 py-1 rounded transition cursor-pointer ${
-                  datePreset === 'ALL' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-                }`}
-              >
-                All Time
-              </button>
-              <button
-                onClick={() => setDatePreset('THIS_MONTH')}
-                className={`px-2.5 py-1 rounded transition cursor-pointer ${
-                  datePreset === 'THIS_MONTH' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-                }`}
-              >
-                This Month
-              </button>
-              <button
-                onClick={() => setDatePreset('30D')}
-                className={`px-2.5 py-1 rounded transition cursor-pointer ${
-                  datePreset === '30D' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-                }`}
-              >
-                Last 30d
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Executive Data Analyst KPI Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Metric 1: Total Gross Revenue */}
-        <div className="bg-white p-4 rounded-xl border border-slate-300 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
-              Gross Realization (வருமானம்)
+            <span className="text-xs text-slate-400 hidden sm:inline">
+              (Click card to toggle sales, analytics & margins)
             </span>
-            <DollarSign className="w-4 h-4 text-emerald-700" />
           </div>
-          <span className="text-2xl font-black text-emerald-700 font-mono block">
-            {formatCurrency(metrics.totalRev)}
+          <span className="text-[11px] font-mono text-slate-500">
+            Active Context:{' '}
+            <strong className="text-emerald-700 font-bold">
+              {selectedBatchFilter === 'ALL' ? '🌟 All Batches Combined' : `📦 Batch #${selectedBatchFilter}`}
+            </strong>
           </span>
-          <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1 font-mono">
-            <span>{filteredSales.length} Transactions</span>
-            <span>Avg: {formatCurrency(metrics.avgTicket)}/inv</span>
+        </div>
+
+        {/* Cards Rail Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          {batchSalesCards.map((bCard) => {
+            const isSelected = selectedBatchFilter.toString() === bCard.batch_no.toString();
+            const isAll = bCard.batch_no === 'ALL';
+            const liquidation = bCard.chicks > 0 ? ((bCard.totalBirdsSold / bCard.chicks) * 100).toFixed(1) : 0;
+
+            return (
+              <div
+                key={bCard.batch_no}
+                onClick={() => setSelectedBatchFilter(bCard.batch_no)}
+                className={`relative rounded-2xl p-4 border-2 transition-all duration-150 cursor-pointer text-left select-none ${
+                  isSelected
+                    ? 'bg-gradient-to-br from-emerald-50 via-white to-emerald-50/40 border-emerald-600 shadow-sm ring-2 ring-emerald-500/20 -translate-y-0.5'
+                    : 'bg-white border-slate-200/90 hover:border-slate-300 hover:shadow-xs'
+                }`}
+              >
+                {/* Active Indicator Badge */}
+                {isSelected && (
+                  <div className="absolute top-3.5 right-3.5 flex items-center gap-1 bg-emerald-700 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full shadow-2xs">
+                    <CheckCircle2 className="w-2.5 h-2.5" />
+                    <span>Active</span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-base">{isAll ? '🌟' : '📦'}</span>
+                  <div>
+                    <h3 className="font-extrabold text-xs text-slate-900">
+                      {isAll ? 'All Batches Combined' : `Batch #${bCard.batch_no}`}
+                    </h3>
+                    <p className="text-[10px] text-slate-400 font-mono">
+                      {isAll ? `${bCard.chicks} total chicks placed` : `Placed: ${formatDate(bCard.date)}`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Sales Realization */}
+                <div className="my-1.5">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                    Sales Realization
+                  </div>
+                  <div className="text-xl font-black font-mono text-slate-900">
+                    {formatCurrency(bCard.totalSales)}
+                  </div>
+                </div>
+
+                {/* Payment Breakdown: Cash vs GPay */}
+                <div className="grid grid-cols-2 gap-1.5 py-1 px-2 bg-slate-50 rounded-xl border border-slate-100 text-[10px] font-mono mb-2">
+                  <div className="flex items-center gap-1 text-slate-700">
+                    <span>💵</span>
+                    <span className="font-bold">{formatCurrency(bCard.cashSales)}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-blue-700">
+                    <span>📱</span>
+                    <span className="font-bold">{formatCurrency(bCard.gpaySales)}</span>
+                  </div>
+                </div>
+
+                {/* Purpose Split: Meat vs Breeding */}
+                <div className="flex items-center justify-between text-[10px] font-mono mb-2">
+                  <span className="text-rose-700 font-semibold">🥩 {formatCurrency(bCard.meatSales)}</span>
+                  <span className="text-amber-700 font-semibold">🐣 {formatCurrency(bCard.breedingSales)}</span>
+                </div>
+
+                {/* Off-Take Liquidation Progress */}
+                <div className="pt-2 border-t border-slate-100">
+                  <div className="flex justify-between items-center text-[10px] text-slate-500 font-mono mb-1">
+                    <span>Sold: <b>{formatNumber(bCard.totalBirdsSold)}</b> birds</span>
+                    <span className="font-bold text-slate-700">{liquidation}%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-emerald-600 h-full rounded-full transition-all"
+                      style={{ width: `${Math.min(100, liquidation)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 3. Executive Poultry KPI Performance Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* Metric 1: Total Gross Revenue & Payment Split */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-1">
+          <div className="flex justify-between items-center text-xs text-slate-500 font-semibold">
+            <span>Gross Realization (வருமானம்)</span>
+            <span className="text-[10px] bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded font-mono font-bold border border-emerald-100">
+              {filteredSales.length} Invoices
+            </span>
+          </div>
+          <div className="text-2xl font-black font-mono text-emerald-800">
+            {formatCurrency(metrics.totalRev)}
+          </div>
+          {/* Dual Payment Split */}
+          <div className="pt-2 border-t border-slate-100 space-y-1.5">
+            <div className="flex justify-between text-[11px] font-mono">
+              <span className="text-slate-600">💵 Cash: <b>{formatCurrency(metrics.totalCash)}</b></span>
+              <span className="text-blue-700">📱 GPay: <b>{formatCurrency(metrics.totalGpay)}</b></span>
+            </div>
+            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden flex">
+              <div
+                className="bg-emerald-600 h-full"
+                style={{
+                  width: `${metrics.totalRev > 0 ? (metrics.totalCash / metrics.totalRev) * 100 : 50}%`
+                }}
+              />
+              <div
+                className="bg-blue-600 h-full"
+                style={{
+                  width: `${metrics.totalRev > 0 ? (metrics.totalGpay / metrics.totalRev) * 100 : 50}%`
+                }}
+              />
+            </div>
           </div>
         </div>
 
-        {/* Metric 2: Live Biomass & Realized Price per Kg */}
-        <div className="bg-white p-4 rounded-xl border border-slate-300 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
-              Realized Farm-Gate Price
+        {/* Metric 2: Meat Purpose Off-Take */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-1">
+          <div className="flex justify-between items-center text-xs text-slate-500 font-semibold">
+            <span>Meat Purpose (இறைச்சி)</span>
+            <span className="text-[10px] bg-rose-50 text-rose-800 px-2 py-0.5 rounded font-mono font-bold border border-rose-100">
+              Live Biomass
             </span>
-            <Scale className="w-4 h-4 text-slate-600" />
           </div>
           <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-black text-slate-900 font-mono">
-              {metrics.avgRatePerKg > 0 ? formatCurrency(metrics.avgRatePerKg) : '₹0'}
+            <span className="text-2xl font-black font-mono text-slate-900">
+              {metrics.avgMeatRateKg > 0 ? formatCurrency(metrics.avgMeatRateKg) : '₹0'}
             </span>
-            <span className="text-xs font-semibold text-slate-500 font-mono">/ kg</span>
+            <span className="text-xs font-semibold text-slate-400 font-mono">/ kg</span>
           </div>
-          <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1 font-mono">
-            <span>Sold: {metrics.totalKg.toFixed(1)} kg</span>
-            {metrics.minRate > 0 && (
-              <span>Spread: ₹{metrics.minRate.toFixed(0)} - ₹{metrics.maxRate.toFixed(0)}</span>
+          <div className="pt-2 border-t border-slate-100 flex justify-between items-center text-[11px] font-mono text-slate-600">
+            <span>Biomass: <b>{metrics.meatKg.toFixed(1)} kg</b></span>
+            <span className="text-rose-700 font-bold">{formatCurrency(metrics.meatRev)}</span>
+          </div>
+        </div>
+
+        {/* Metric 3: Breeding Stock Dispatch */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-1">
+          <div className="flex justify-between items-center text-xs text-slate-500 font-semibold">
+            <span>Breeding Stock (இனப்பெருக்கம்)</span>
+            <span className="text-[10px] bg-amber-50 text-amber-800 px-2 py-0.5 rounded font-mono font-bold border border-amber-100">
+              Per Bird
+            </span>
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-2xl font-black font-mono text-slate-900">
+              {metrics.avgBreedingRateBird > 0 ? formatCurrency(metrics.avgBreedingRateBird) : '₹0'}
+            </span>
+            <span className="text-xs font-semibold text-slate-400 font-mono">/ bird</span>
+          </div>
+          <div className="pt-2 border-t border-slate-100 flex justify-between items-center text-[11px] font-mono text-slate-600">
+            <span>Dispatched: <b>{formatNumber(metrics.breedingBirds)} birds</b></span>
+            <span className="text-amber-800 font-bold">{formatCurrency(metrics.breedingRev)}</span>
+          </div>
+        </div>
+
+        {/* Metric 4: Flock Inventory & Liquidation */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-1">
+          <div className="flex justify-between items-center text-xs text-slate-500 font-semibold">
+            <span>Flock Off-Take & Shed</span>
+            <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-mono font-bold">
+              Birds Count
+            </span>
+          </div>
+          <div className="text-2xl font-black font-mono text-slate-900">
+            {formatNumber(metrics.totalBirds)} Sold
+          </div>
+          <div className="pt-2 border-t border-slate-100 flex justify-between items-center text-[11px] font-mono text-slate-600">
+            {metrics.isSingleBatch ? (
+              <>
+                <span>In Shed: <b>{metrics.remainingBirds} birds</b></span>
+                <span className="text-emerald-700 font-bold">{metrics.liquidationRate.toFixed(1)}% Cleared</span>
+              </>
+            ) : (
+              <>
+                <span>Across All Flocks</span>
+                <span className="text-emerald-700 font-bold">{filteredSales.length} Invoices</span>
+              </>
             )}
           </div>
         </div>
-
-        {/* Metric 3: Birds Marketed & Average Weight per Bird */}
-        <div className="bg-white p-4 rounded-xl border border-slate-300 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
-              Birds Sold & Weight Grade
-            </span>
-            <Egg className="w-4 h-4 text-amber-700" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900 font-mono">
-              {formatNumber(metrics.totalBirds)}
-            </span>
-            <span className="text-xs font-bold text-slate-500">
-              ({metrics.totalHens}H / {metrics.totalRoosters}R)
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-[11px] text-slate-600 mt-1 font-mono">
-            <span>Avg: {metrics.avgWeightPerBird.toFixed(2)} kg/bird</span>
-            <span
-              className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                metrics.avgWeightPerBird >= 1.8 && metrics.avgWeightPerBird <= 2.3
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : metrics.avgWeightPerBird > 2.3
-                  ? 'bg-amber-100 text-amber-800'
-                  : 'bg-slate-100 text-slate-700'
-              }`}
-            >
-              {metrics.avgWeightPerBird >= 1.8 && metrics.avgWeightPerBird <= 2.3
-                ? 'Prime Grade'
-                : metrics.avgWeightPerBird > 2.3
-                ? 'Heavy Rooster'
-                : 'Lightweight'}
-            </span>
-          </div>
-        </div>
-
-        {/* Metric 4: Liquidation & Margin Spread */}
-        <div className="bg-white p-4 rounded-xl border border-slate-300 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
-              {metrics.isSingleBatch ? 'Flock Liquidation' : 'Gross Margin Spread'}
-            </span>
-            <TrendingUp className="w-4 h-4 text-emerald-700" />
-          </div>
-          {metrics.isSingleBatch ? (
-            <div>
-              <div className="flex items-baseline justify-between">
-                <span className="text-2xl font-black text-slate-900 font-mono">
-                  {metrics.liquidationRate.toFixed(1)}%
-                </span>
-                <span className="text-xs text-slate-500 font-mono font-bold">
-                  {metrics.remainingBirds} birds in shed
-                </span>
-              </div>
-              {/* Visual Liquidation Bar */}
-              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden border border-slate-200 mt-2">
-                <div
-                  className="bg-emerald-700 h-full rounded-full transition-all duration-300"
-                  style={{ width: `${metrics.liquidationRate}%` }}
-                />
-              </div>
-            </div>
-          ) : (
-            <div>
-              <span className="text-2xl font-black text-emerald-700 font-mono block">
-                {metrics.grossProfit >= 0 ? '+' : ''}
-                {formatCurrency(metrics.grossProfit)}
-              </span>
-              <div className="text-[11px] text-slate-500 mt-1 font-mono">
-                {metrics.grossMarginPct.toFixed(1)}% gross margin across farm
-              </div>
-            </div>
-          )}
-        </div>
       </div>
-
-      {/* 4. Sub-Tab 1: MARKET ANALYTICS (Charts, Concentration & Mix) */}
+{/* 4. Sub-Tab 1: MARKET ANALYTICS (Charts, Concentration & Mix) */}
       {activeTab === 'analytics' && (
         <div className="space-y-6">
           {/* Timeline Chart: Daily Sales Revenue & Weight Off-take */}
@@ -885,7 +973,7 @@ export default function SalesView({
             <div className="lg:col-span-5 bg-white p-5 rounded-xl border border-slate-300 shadow-xs space-y-4">
               <div className="border-b border-slate-200 pb-3">
                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <Activity className="w-4 h-4 text-purple-700" />
+                  <Activity className="w-4 h-4 text-slate-700" />
                   <span>Flock Gender & Off-Take Split</span>
                 </h3>
                 <p className="text-[11px] text-slate-500 font-mono mt-0.5">
@@ -1109,203 +1197,342 @@ export default function SalesView({
         </div>
       )}
 
-      {/* 6. Sub-Tab 3: MASTER SALES LEDGER TABLE */}
+      
+      {/* 6. Sub-Tab 3: MASTER SALES LEDGER TABLE & POS CONTROL */}
       {activeTab === 'ledger' && (
-        <div className="bg-white rounded-xl border border-slate-300 shadow-xs overflow-hidden">
-          {/* Table Header Strip with Sorting & Filter Counts */}
-          <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Sales Ledger Register ({sortedSales.length} Entries)
-              </h3>
-              <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-                Live commercial stock off-take with official tax invoice generators
-              </p>
+        <div className="space-y-3">
+          {/* Unified Single Consolidated Toolbar */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">🔍</span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search buyer, phone, invoice, batch..."
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+              />
             </div>
 
-            {/* Sorting Dropdown */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
-                <ArrowUpDown className="w-3.5 h-3.5" />
-                <span>Sort:</span>
-              </span>
+            {/* Segmented Filters & Presets */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Purpose Filter */}
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 font-semibold text-xs">
+                <button
+                  type="button"
+                  onClick={() => setSaleTypeFilter('ALL')}
+                  className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                    saleTypeFilter === 'ALL' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  All Purpose
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSaleTypeFilter('meat')}
+                  className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
+                    saleTypeFilter === 'meat' ? 'bg-white text-rose-900 font-bold shadow-xs' : 'text-slate-600 hover:text-rose-900'
+                  }`}
+                >
+                  <span>🥩 Meat</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSaleTypeFilter('breeding')}
+                  className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
+                    saleTypeFilter === 'breeding' ? 'bg-white text-amber-900 font-bold shadow-xs' : 'text-slate-600 hover:text-amber-900'
+                  }`}
+                >
+                  <span>🐣 Breeding</span>
+                </button>
+              </div>
+
+              {/* Payment Filter */}
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 font-semibold text-xs">
+                <button
+                  type="button"
+                  onClick={() => setPaymentFilter('ALL')}
+                  className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                    paymentFilter === 'ALL' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  All Pay
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentFilter('cash')}
+                  className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
+                    paymentFilter === 'cash' ? 'bg-white text-emerald-900 font-bold shadow-xs' : 'text-slate-600 hover:text-emerald-900'
+                  }`}
+                >
+                  <span>💵 Cash</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentFilter('gpay')}
+                  className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
+                    paymentFilter === 'gpay' ? 'bg-white text-blue-900 font-bold shadow-xs' : 'text-slate-600 hover:text-blue-900'
+                  }`}
+                >
+                  <span>📱 GPay</span>
+                </button>
+              </div>
+
+              {/* Buyer Dropdown */}
               <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-white text-xs font-semibold text-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-emerald-600 cursor-pointer"
+                value={customerFilter}
+                onChange={(e) => setCustomerFilter(e.target.value)}
+                className="bg-slate-50 text-xs font-semibold text-slate-700 px-2.5 py-1.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
               >
-                <option value="DATE_DESC">Date (Newest First)</option>
-                <option value="DATE_ASC">Date (Oldest First)</option>
-                <option value="AMOUNT_DESC">Total Amount (Highest)</option>
-                <option value="KG_DESC">Live Weight (Highest)</option>
-                <option value="RATE_DESC">Rate / Kg (Highest)</option>
+                <option value="ALL">All Buyers ({customers.length})</option>
+                {customers.map((c) => {
+                  const catInfo = CUSTOMER_CATEGORIES[c.category] || CUSTOMER_CATEGORIES.individual;
+                  return (
+                    <option key={c.customer_id} value={c.customer_id}>
+                      {catInfo.icon} {c.customer_name} {c.sub_category ? `(${c.sub_category})` : ''}
+                    </option>
+                  );
+                })}
               </select>
+
+              {/* Date Presets */}
+              <div className="hidden md:flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 font-semibold text-xs">
+                <button
+                  type="button"
+                  onClick={() => setDatePreset('ALL')}
+                  className={`px-2 py-1 rounded-lg transition cursor-pointer ${
+                    datePreset === 'ALL' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDatePreset('THIS_MONTH')}
+                  className={`px-2 py-1 rounded-lg transition cursor-pointer ${
+                    datePreset === 'THIS_MONTH' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
+                  }`}
+                >
+                  This Month
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDatePreset('30D')}
+                  className={`px-2 py-1 rounded-lg transition cursor-pointer ${
+                    datePreset === '30D' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
+                  }`}
+                >
+                  30d
+                </button>
+              </div>
+
+              {/* Export CSV */}
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                title="Download CSV"
+                className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 transition cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">CSV</span>
+              </button>
             </div>
           </div>
 
-          {/* Master Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-100/80 border-b border-slate-200 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                  <th className="py-3 px-3.5 w-32">Invoice / Date</th>
-                  <th className="py-3 px-3.5 w-24">Batch #</th>
-                  <th className="py-3 px-3.5">Customer Account</th>
-                  <th className="py-3 px-3.5 text-center">Birds (H + R)</th>
-                  <th className="py-3 px-3.5 text-right">Weight (Kg)</th>
-                  <th className="py-3 px-3.5 text-right">Avg Wt / Bird</th>
-                  <th className="py-3 px-3.5 text-right">Rate / Kg</th>
-                  <th className="py-3 px-3.5 text-right">Realization (INR)</th>
-                  <th className="py-3 px-3.5 text-center w-28">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {sortedSales.length > 0 ? (
-                  sortedSales.map((s) => {
-                    const batchNo = s.batch?.batch_no || s.batch;
-                    const customerName = s.customer?.customer_name || 'Walk-in Cash Buyer';
-                    const contact = s.customer?.contact_number;
-                    const totalBirds = Number(s.no_of_hens) + Number(s.no_of_roosters);
-                    const kgNum = Number(s.kg) || 0;
-                    const ratePerKg = kgNum > 0 ? Number(s.amount) / kgNum : 0;
-                    const avgBirdWeight = totalBirds > 0 ? kgNum / totalBirds : 0;
-
-                    return (
-                      <tr key={s.id} className="hover:bg-slate-50/80 transition">
-                        {/* Invoice & Date */}
-                        <td className="py-3 px-3.5 font-mono">
-                          <span className="font-bold text-slate-900 block">
-                            #INV-{s.id.toString().padStart(4, '0')}
-                          </span>
-                          <span className="text-[11px] text-slate-500">
-                            {formatDate(s.date)}
-                          </span>
-                        </td>
-
-                        {/* Batch # */}
-                        <td className="py-3 px-3.5">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedBatchFilter(batchNo)}
-                            className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 cursor-pointer"
-                            title={`Filter solely by Batch #${batchNo}`}
-                          >
-                            #{batchNo}
-                          </button>
-                        </td>
-
-                        {/* Customer */}
-                        <td className="py-3 px-3.5">
-                          <span className="font-bold text-slate-900 block">{customerName}</span>
-                          {contact && (
-                            <span className="text-[10px] text-slate-400 font-mono">{contact}</span>
-                          )}
-                        </td>
-
-                        {/* Birds Count (Hens + Roosters) */}
-                        <td className="py-3 px-3.5 text-center font-mono">
-                          <span className="font-bold text-slate-900 block text-xs">
-                            {formatNumber(totalBirds)}
-                          </span>
-                          <span className="text-[10px] text-slate-400 block">
-                            {s.no_of_hens}H • {s.no_of_roosters}R
-                          </span>
-                        </td>
-
-                        {/* Live Weight */}
-                        <td className="py-3 px-3.5 text-right font-mono font-bold text-slate-900">
-                          {kgNum > 0 ? `${kgNum.toFixed(2)} kg` : '-'}
-                        </td>
-
-                        {/* Avg Weight / Bird */}
-                        <td className="py-3 px-3.5 text-right font-mono text-slate-700">
-                          {avgBirdWeight > 0 ? `${avgBirdWeight.toFixed(2)} kg` : '-'}
-                        </td>
-
-                        {/* Rate / Kg */}
-                        <td className="py-3 px-3.5 text-right font-mono text-slate-700">
-                          {ratePerKg > 0 ? formatCurrency(ratePerKg) : '-'}
-                        </td>
-
-                        {/* Total Realization Amount */}
-                        <td className="py-3 px-3.5 text-right font-mono font-black text-emerald-700 text-sm">
-                          +{formatCurrency(s.amount)}
-                        </td>
-
-                        {/* Actions */}
-                        <td className="py-3 px-3.5 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            {/* Print Invoice */}
-                            <button
-                              onClick={() => onPrintInvoice && onPrintInvoice(s)}
-                              title="Print Official Tax Invoice"
-                              className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-slate-100 rounded transition cursor-pointer"
-                            >
-                              <FileText className="w-3.5 h-3.5" />
-                            </button>
-
-                            {/* Edit */}
-                            <button
-                              onClick={() => openModal('sale', s)}
-                              title="Edit Sale Record"
-                              className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition cursor-pointer"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-
-                            {/* Delete */}
-                            <button
-                              onClick={() => {
-                                if (window.confirm(`Delete Sale #INV-${s.id} (+₹${s.amount})?`)) {
-                                  onDeleteSale(s.id);
-                                }
-                              }}
-                              title="Delete Record"
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={9} className="py-12 text-center text-slate-400">
-                      No sales records matching active filters.
-                    </td>
+          {/* High-Density Poultry Dispatch Ledger Table */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider font-mono">
+                    <th className="py-3 px-4">Invoice / Date</th>
+                    <th className="py-3 px-3">Purpose</th>
+                    <th className="py-3 px-3">Pay Mode</th>
+                    <th className="py-3 px-3">Flock #</th>
+                    <th className="py-3 px-4">Customer Account</th>
+                    <th className="py-3 px-3 text-center">Birds</th>
+                    <th className="py-3 px-3 text-right">Biomass (Kg)</th>
+                    <th className="py-3 px-3 text-right">Rate</th>
+                    <th className="py-3 px-4 text-right">Realization</th>
+                    <th className="py-3 px-4 text-center">Actions</th>
                   </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {sortedSales.length > 0 ? (
+                    sortedSales.map((s) => {
+                      const batchNo = s.batch?.batch_no || s.batch;
+                      const customerName = s.customer?.customer_name || 'Walk-in Cash Buyer';
+                      const contact = s.customer?.contact_number;
+                      const totalBirds = Number(s.no_of_hens) + Number(s.no_of_roosters);
+                      const kgNum = Number(s.kg) || 0;
+                      const isBreeding = s.sale_type === 'breeding';
+                      const isGpay = s.payment_method === 'gpay';
+
+                      return (
+                        <tr key={s.id} className="hover:bg-slate-50/80 transition font-mono">
+                          {/* Invoice / Date */}
+                          <td className="py-3 px-4">
+                            <span className="font-bold text-slate-900 block">
+                              #INV-{s.id.toString().padStart(4, '0')}
+                            </span>
+                            <span className="text-[11px] text-slate-400 font-sans">
+                              {formatDate(s.date)}
+                            </span>
+                          </td>
+
+                          {/* Purpose */}
+                          <td className="py-3 px-3 font-sans">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                isBreeding
+                                  ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                  : 'bg-rose-50 text-rose-800 border-rose-200'
+                              }`}
+                            >
+                              {isBreeding ? '🐣 Breed' : '🥩 Meat'}
+                            </span>
+                          </td>
+
+                          {/* Pay Mode */}
+                          <td className="py-3 px-3 font-sans">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                isGpay
+                                  ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                  : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              }`}
+                            >
+                              {isGpay ? '📱 GPay' : '💵 Cash'}
+                            </span>
+                          </td>
+
+                          {/* Flock # */}
+                          <td className="py-3 px-3">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedBatchFilter(batchNo)}
+                              title={`Focus solely on Batch #${batchNo}`}
+                              className="px-2 py-0.5 rounded-md font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 cursor-pointer text-[11px]"
+                            >
+                              #{batchNo}
+                            </button>
+                          </td>
+
+                          {/* Customer */}
+                          <td className="py-3 px-4 font-sans">
+                            <span className="font-bold text-slate-900 block text-xs truncate max-w-[150px]">
+                              {customerName}
+                            </span>
+                            {contact && (
+                              <span className="text-[11px] text-slate-400 font-mono">{contact}</span>
+                            )}
+                          </td>
+
+                          {/* Birds */}
+                          <td className="py-3 px-3 text-center">
+                            <span className="font-bold text-slate-900 block">
+                              {formatNumber(totalBirds)}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block">
+                              {s.no_of_hens}H • {s.no_of_roosters}R
+                            </span>
+                          </td>
+
+                          {/* Weight */}
+                          <td className="py-3 px-3 text-right font-bold text-slate-800">
+                            {kgNum > 0 ? `${kgNum.toFixed(2)} kg` : '—'}
+                          </td>
+
+                          {/* Rate */}
+                          <td className="py-3 px-3 text-right">
+                            {isBreeding ? (
+                              <span className="text-amber-800 font-bold">
+                                {s.price_per_bird
+                                  ? `${formatCurrency(s.price_per_bird)}/b`
+                                  : totalBirds > 0
+                                  ? `${formatCurrency(Number(s.amount) / totalBirds)}/b`
+                                  : '—'}
+                              </span>
+                            ) : (
+                              <span className="text-emerald-800 font-bold">
+                                {kgNum > 0 ? `${formatCurrency(Number(s.amount) / kgNum)}/kg` : '—'}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Net Realization */}
+                          <td className="py-3 px-4 text-right font-black text-emerald-800 text-sm">
+                            +{formatCurrency(s.amount)}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => onPrintInvoice && onPrintInvoice(s)}
+                                title="Print Tax Invoice"
+                                className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => openModal('sale', s)}
+                                title="Edit Sale"
+                                className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`Delete Sale #INV-${s.id} (+₹${s.amount})?`)) {
+                                    onDeleteSale(s.id);
+                                  }
+                                }}
+                                title="Delete Record"
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={10} className="py-12 text-center text-slate-400 font-sans">
+                        No sales transactions found matching active filters.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+
+                {/* Table Footer Summary */}
+                {sortedSales.length > 0 && (
+                  <tfoot>
+                    <tr className="bg-slate-50 font-bold border-t border-slate-200 text-slate-900 font-mono">
+                      <td colSpan={5} className="py-3 px-4 font-sans text-xs text-slate-700">
+                        Ledger Totals ({sortedSales.length} Invoices)
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        {formatNumber(metrics.totalBirds)} birds
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        {metrics.totalKg.toFixed(2)} kg
+                      </td>
+                      <td className="py-3 px-3 text-right text-slate-500">
+                        {metrics.avgMeatRateKg > 0 ? `${formatCurrency(metrics.avgMeatRateKg)}/kg` : '—'}
+                      </td>
+                      <td className="py-3 px-4 text-right text-emerald-800 text-sm">
+                        {formatCurrency(metrics.totalRev)}
+                      </td>
+                      <td className="py-3 px-4" />
+                    </tr>
+                  </tfoot>
                 )}
-              </tbody>
-
-              {/* Table Footer Summary Row */}
-              {sortedSales.length > 0 && (
-                <tfoot>
-                  <tr className="bg-slate-100 font-bold border-t-2 border-slate-300 text-slate-900">
-                    <td colSpan={3} className="py-3 px-3.5 uppercase tracking-wide text-slate-700 font-mono text-[11px]">
-                      Ledger Totals ({sortedSales.length} Invoices)
-                    </td>
-                    <td className="py-3 px-3.5 text-center font-mono">
-                      {formatNumber(metrics.totalBirds)} birds
-                    </td>
-                    <td className="py-3 px-3.5 text-right font-mono">
-                      {metrics.totalKg.toFixed(2)} kg
-                    </td>
-                    <td className="py-3 px-3.5 text-right font-mono text-slate-600">
-                      {metrics.avgWeightPerBird > 0 ? `${metrics.avgWeightPerBird.toFixed(2)} kg` : '-'}
-                    </td>
-                    <td className="py-3 px-3.5 text-right font-mono text-emerald-800">
-                      {metrics.avgRatePerKg > 0 ? formatCurrency(metrics.avgRatePerKg) : '-'}
-                    </td>
-                    <td className="py-3 px-3.5 text-right font-mono text-emerald-800 text-base">
-                      {formatCurrency(metrics.totalRev)}
-                    </td>
-                    <td className="py-3 px-3.5" />
-                  </tr>
-                </tfoot>
-              )}
-            </table>
+              </table>
+            </div>
           </div>
         </div>
       )}

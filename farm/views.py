@@ -20,12 +20,15 @@ class BatchViewSet(viewsets.ModelViewSet): # CRUD operations for Batch model
     @action (detail = True, methods =["get"])
     def BatchRevenue(self,request,pk=None):
         batch = self.get_object()
-        total_sales_of_a_batch  = batch.batchsale_set.aggregate(total = Sum('amount'))['total'] or 0 
+        total_sales_of_a_batch = batch.batchsale_set.aggregate(total = Sum('amount'))['total'] or 0 
+        meat_revenue = batch.batchsale_set.filter(sale_type='meat').aggregate(total=Sum('amount'))['total'] or 0
+        breeding_revenue = batch.batchsale_set.filter(sale_type='breeding').aggregate(total=Sum('amount'))['total'] or 0
 
         return Response({
-            "batch_no" :  batch.batch_no,
-            "total_revenue" : total_sales_of_a_batch
-
+            "batch_no" : batch.batch_no,
+            "total_revenue" : total_sales_of_a_batch,
+            "meat_revenue": meat_revenue,
+            "breeding_revenue": breeding_revenue,
         })
 
     @action (detail=True,methods =['get'])
@@ -227,6 +230,13 @@ class BatchExpenseViewSet(viewsets.ModelViewSet):  # CRUD operations for BatchEx
 class BatchSaleViewSet(viewsets.ModelViewSet):
     queryset = BatchSale.objects.all()
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        sale_type = self.request.query_params.get('sale_type')
+        if sale_type:
+            qs = qs.filter(sale_type=sale_type)
+        return qs
+
     def get_serializer_class(self):             # Use nested/detailed serializer for GET requests (list & retrieve)
         if self.action in ['list', 'retrieve']:
             return BatchSaleDetailSerializer     # Use simple serializer for POST/PUT/PATCH requests
@@ -245,6 +255,16 @@ class CustomerDetailViewSet(viewsets.ModelViewSet):  # CRUD operations for Custo
     queryset = CustomerDetail.objects.all()
     serializer_class = CustomerDetailSerializer
 
+    def get_queryset(self):
+        qs = CustomerDetail.objects.all().order_by('-customer_id')
+        category = self.request.query_params.get('category')
+        if category and category != 'ALL':
+            qs = qs.filter(category=category)
+        sub_category = self.request.query_params.get('sub_category')
+        if sub_category and sub_category != 'ALL':
+            qs = qs.filter(sub_category=sub_category)
+        return qs
+
 
 def index (request):
     return render (request, 'farm/index.html')
@@ -261,4 +281,3 @@ def logout_view(request):
     # Deletes the token from the DB → instantly revoked
     request.user.auth_token.delete()
     return Response({"message": "Logged out successfully."})
-

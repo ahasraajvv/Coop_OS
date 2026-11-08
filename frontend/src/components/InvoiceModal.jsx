@@ -1,6 +1,6 @@
 import React from 'react';
 import { FileText, X, Printer, CheckCircle2 } from 'lucide-react';
-import { formatCurrency, formatDate } from '../utils';
+import { formatCurrency, formatDate, CUSTOMER_CATEGORIES } from '../utils';
 
 export default function InvoiceModal({ sale, customers = [], onClose }) {
   if (!sale) return null;
@@ -74,8 +74,12 @@ export default function InvoiceModal({ sale, customers = [], onClose }) {
               </p>
             </div>
             <div className="text-right">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md inline-block mb-1">
-                Cash Memo / Invoice
+              <span className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-md inline-block mb-1 border ${
+                sale.sale_type === 'breeding'
+                  ? 'text-amber-800 bg-amber-50 border-amber-200'
+                  : 'text-emerald-700 bg-emerald-50 border-emerald-200'
+              }`}>
+                {sale.sale_type === 'breeding' ? '🐣 Breeding Stock Memo' : '🥩 Meat Cash Memo / Invoice'}
               </span>
               <p className="font-mono font-bold text-sm text-slate-900">
                 #INV-{invoiceNum}
@@ -93,6 +97,12 @@ export default function InvoiceModal({ sale, customers = [], onClose }) {
               <h3 className="text-sm font-bold text-slate-900">
                 {customer.customer_name || 'Walk-in Farm Buyer'}
               </h3>
+              {customer.category && (
+                <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                  {CUSTOMER_CATEGORIES[customer.category]?.icon || '🏷️'} {CUSTOMER_CATEGORIES[customer.category]?.label || customer.category}
+                  {customer.sub_category ? ` • ${customer.sub_category}` : ''}
+                </p>
+              )}
               {customer.contact_number && (
                 <p className="text-slate-600 font-mono mt-0.5">Phone: {customer.contact_number}</p>
               )}
@@ -108,7 +118,7 @@ export default function InvoiceModal({ sale, customers = [], onClose }) {
                 Lot & Dispatch Origin:
               </span>
               <p className="font-bold text-slate-800">Flock Batch #{batchNo}</p>
-              <p className="text-slate-600 mt-0.5">Payment Mode: Direct Cash / UPI</p>
+              <p className="text-slate-600 mt-0.5">Payment Mode: {sale.payment_method === 'gpay' ? '📱 GPay / UPI Transfer' : '💵 Cash in Hand'}</p>
               <p className="text-emerald-700 font-semibold mt-1 flex items-center justify-end gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Payment Received in Full
@@ -122,18 +132,29 @@ export default function InvoiceModal({ sale, customers = [], onClose }) {
               <thead>
                 <tr className="bg-slate-100/80 border-b border-slate-200 font-bold text-slate-700 uppercase text-[10px] tracking-wider">
                   <th className="py-2.5 px-4">Item Description</th>
+                  <th className="py-2.5 px-4 text-center">Category</th>
                   <th className="py-2.5 px-4 text-center">Hens</th>
                   <th className="py-2.5 px-4 text-center">Roosters</th>
                   <th className="py-2.5 px-4 text-center">Total Birds</th>
                   <th className="py-2.5 px-4 text-right">Weighed Kg</th>
-                  <th className="py-2.5 px-4 text-right">Rate / Kg</th>
+                  <th className="py-2.5 px-4 text-right">{sale.sale_type === 'breeding' ? 'Rate / Bird' : 'Rate / Kg'}</th>
                   <th className="py-2.5 px-4 text-right">Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 <tr>
                   <td className="py-3.5 px-4 font-semibold text-slate-800">
-                    Commercial Live Birds (Batch #{batchNo})
+                    {sale.sale_type === 'breeding' ? 'Selected Flock - Breeding Stock (இனப்பெருக்கம்)' : 'Commercial Live Birds - Meat Purpose (இறைச்சி)'}
+                    <div className="text-[10px] text-slate-400 font-normal">Flock Batch #{batchNo}</div>
+                  </td>
+                  <td className="py-3.5 px-4 text-center">
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      sale.sale_type === 'breeding'
+                        ? 'bg-amber-100 text-amber-800 border-amber-200'
+                        : 'bg-rose-100 text-rose-800 border-rose-200'
+                    }`}>
+                      {sale.sale_type === 'breeding' ? '🐣 Breeding' : '🥩 Meat'}
+                    </span>
                   </td>
                   <td className="py-3.5 px-4 text-center font-mono">{sale.no_of_hens ?? 0}</td>
                   <td className="py-3.5 px-4 text-center font-mono">{sale.no_of_roosters ?? 0}</td>
@@ -143,8 +164,12 @@ export default function InvoiceModal({ sale, customers = [], onClose }) {
                   <td className="py-3.5 px-4 text-right font-mono font-bold">
                     {kg > 0 ? `${kg.toFixed(2)} kg` : '-'}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono text-slate-600">
-                    {ratePerKg > 0 ? formatCurrency(ratePerKg) : '-'}
+                  <td className="py-3.5 px-4 text-right font-mono text-slate-600 font-bold">
+                    {sale.sale_type === 'breeding'
+                      ? sale.price_per_bird
+                        ? formatCurrency(sale.price_per_bird)
+                        : totalBirds > 0 ? formatCurrency((Number(sale.amount) || 0) / totalBirds) : '-'
+                      : ratePerKg > 0 ? formatCurrency(ratePerKg) : '-'}
                   </td>
                   <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900 text-sm">
                     {formatCurrency(sale.amount)}

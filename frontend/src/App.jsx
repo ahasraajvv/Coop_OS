@@ -28,7 +28,7 @@ import {
   updateMortality,
   deleteMortality
 } from './api';
-import Sidebar from './components/Sidebar';
+import TopNavbar from './components/TopNavbar';
 
 import DashboardView from './components/DashboardView';
 import BatchesView from './components/BatchesView';
@@ -38,6 +38,7 @@ import ExpensesView from './components/ExpensesView';
 import MortalityView from './components/MortalityView';
 import ReportsView from './components/ReportsView';
 import BatchCalculatorView from './components/BatchCalculatorView';
+import ReinvestmentView from './components/ReinvestmentView';
 import VaccinationBoard from './components/VaccinationBoard';
 import LoginView from './components/LoginView';
 import InvoiceModal from './components/InvoiceModal';
@@ -55,8 +56,8 @@ export default function App() {
   const [lang, setLang] = useState(() => localStorage.getItem('coopOS_lang') || 'en');
   const [currentView, setCurrentView] = useState(() => {
     const hash = (typeof window !== 'undefined' ? window.location.hash.replace('#', '') : '');
-    const validViews = ['dashboard', 'batches', 'vaccinations', 'customers', 'sales', 'expenses', 'mortality', 'reports', 'calculator'];
-    return validViews.includes(hash) ? hash : 'dashboard';
+    const validViews = ['sales', 'expenses', 'reinvestment', 'customers', 'mortality', 'vaccinations', 'reports', 'dashboard', 'batches', 'calculator'];
+    return validViews.includes(hash) ? hash : 'sales';
   });
 
   const handleNavigateView = (view) => {
@@ -69,7 +70,7 @@ export default function App() {
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace('#', '');
-      const validViews = ['dashboard', 'batches', 'vaccinations', 'customers', 'sales', 'expenses', 'mortality', 'reports', 'calculator'];
+      const validViews = ['sales', 'expenses', 'reinvestment', 'customers', 'mortality', 'vaccinations', 'reports', 'dashboard', 'batches', 'calculator'];
       if (validViews.includes(hash)) {
         setCurrentView(hash);
       }
@@ -263,9 +264,13 @@ export default function App() {
         batch: payload.batch,
         customer: payload.customer,
         date: payload.date,
+        sale_type: payload.sale_type,
+        payment_method: payload.payment_method || 'cash',
         no_of_hens: payload.no_of_hens,
         no_of_roosters: payload.no_of_roosters,
         kg: payload.kg,
+        price_per_kg: payload.price_per_kg,
+        price_per_bird: payload.price_per_bird,
         amount: payload.amount
       });
       showToast(`Sale #INV-${payload.id} updated successfully!`);
@@ -345,11 +350,17 @@ export default function App() {
         customer_name: payload.customer_name,
         contact_number: payload.contact_number,
         email: payload.email,
-        address: payload.address
+        address: payload.address,
+        category: payload.category || 'individual',
+        sub_category: payload.sub_category || ''
       });
       showToast(`Buyer account "${payload.customer_name}" updated.`);
     } else {
-      await createCustomer(payload);
+      await createCustomer({
+        ...payload,
+        category: payload.category || 'individual',
+        sub_category: payload.sub_category || ''
+      });
       showToast(`Buyer account "${payload.customer_name}" added!`);
     }
     loadAllData();
@@ -400,48 +411,31 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-100 overflow-hidden text-slate-800">
-      {/* Sidebar (Left) */}
-      <Sidebar
+    <div className="min-h-screen bg-[#090a0f] text-slate-100 flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-400">
+      {/* Universal Top Bar (Replaces Sidebar) */}
+      <TopNavbar
         currentView={currentView}
         setCurrentView={handleNavigateView}
-        onLogout={handleLogout}
-        lang={lang}
-        setLang={handleLangChange}
-        summaryMetrics={summaryMetrics}
-        openModal={openModal}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        selectedBatchFilter={selectedBatchFilter}
+        setSelectedBatchFilter={setSelectedBatchFilter}
+        batches={batches}
+        batchMetrics={batchMetrics}
+        sales={sales}
+        expenses={expenses}
+        mortalityLogs={mortalityLogs}
+        customers={customers}
         onRefresh={loadAllData}
         loading={loading}
+        openModal={openModal}
+        lang={lang}
+        setLang={handleLangChange}
+        onLogout={handleLogout}
       />
 
-      {/* Main Workstation View Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Universal Top Header on All Pages */}
-        <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between flex-shrink-0 z-10 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center shadow-xs">
-              <span className="text-xl">🐔</span>
-            </div>
-            <div>
-              <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-900 leading-tight">
-                V V A பெருவிடை நாட்டுக்கோழி
-              </h1>
-              <p className="text-[11px] font-semibold text-emerald-700 leading-none mt-0.5">
-                பண்ணை மேலாண்மை அமைப்பு • Commercial Poultry Farm Workstation
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Farm Active</span>
-            </span>
-          </div>
-        </header>
-
-        {/* Scrollable Workstation Content */}
-        <main className="flex-1 overflow-y-auto p-6 space-y-6">
+      {/* Main Full-Width Workstation Canvas */}
+      <main className="flex-1 max-w-[1720px] w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
           {currentView === 'dashboard' && (
             <DashboardView
               batches={batches}
@@ -565,17 +559,19 @@ export default function App() {
             />
           )}
 
-          {currentView === 'calculator' && (
-            <BatchCalculatorView
+          {(currentView === 'reinvestment' || currentView === 'calculator') && (
+            <ReinvestmentView
               batches={batches}
+              sales={sales}
               expenses={expenses}
               mortalityLogs={mortalityLogs}
-              sales={sales}
+              selectedBatchFilter={selectedBatchFilter}
+              setSelectedBatchFilter={setSelectedBatchFilter}
+              openModal={openModal}
               lang={lang}
             />
           )}
         </main>
-      </div>
 
       {/* Interactive Business Entry Modals */}
       {activeModal === 'batch' && (
@@ -616,6 +612,7 @@ export default function App() {
           isOpen={true}
           onClose={closeModal}
           onSubmit={handleSaveCustomer}
+          customers={customers}
           initialData={modalInitialData}
         />
       )}

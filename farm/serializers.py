@@ -84,7 +84,7 @@ class BatchSaleSerializer(serializers.ModelSerializer):
         model = BatchSale
         fields = '__all__'
 
-    def validate(self,data):
+    def validate(self, data):
         no_of_hens = data.get('no_of_hens', 0)
         no_of_roosters = data.get('no_of_roosters', 0)
         if no_of_hens + no_of_roosters <= 0:
