@@ -11,21 +11,25 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 from pathlib import Path
-import dj_database_url
 import os
+import dj_database_url
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file if present
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-#+q_&cdf0tpwiila1*!7u@(mn84an6)m8pgjo^vhfw6h&v=twj'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-#+q_&cdf0tpwiila1*!7u@(mn84an6)m8pgjo^vhfw6h&v=twj')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
 ALLOWED_HOSTS = ['*']
 
@@ -83,9 +87,6 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-# Database
-# This will use SQLite on your local computer, but automatically switch 
-# to PostgreSQL on Render when the DATABASE_URL is provided!
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -93,10 +94,10 @@ DATABASES = {
     }
 }
 
-# If Render provides a live Database URL, override the SQLite setting
+# Automatically use PostgreSQL when DATABASE_URL is set in environment or .env
 database_url = os.environ.get("DATABASE_URL")
 if database_url:
-    DATABASES['default'] = dj_database_url.parse(database_url)
+    DATABASES['default'] = dj_database_url.parse(database_url, conn_max_age=600)
 
 
 # Password validation

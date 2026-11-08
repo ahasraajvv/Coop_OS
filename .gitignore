@@ -2,6 +2,10 @@
 __pycache__/
 *.pyc
 
+# Environment & Secrets
+.env
+*.env
+
 # Django
 db.sqlite3
 *.sqlite3
