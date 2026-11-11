@@ -101,7 +101,8 @@ DATABASES = {
 # Automatically use PostgreSQL for default when DATABASE_URL is set in environment or .env
 database_url = os.environ.get("DATABASE_URL")
 if database_url:
-    DATABASES['default'] = dj_database_url.parse(database_url, conn_max_age=600)
+    DATABASES['default'] = dj_database_url.parse(database_url, conn_max_age=0)
+    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
 
 
 # Password validation
