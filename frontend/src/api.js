@@ -341,3 +341,20 @@ export async function deleteVaccination(vaccineId) {
   return await handleResponse(res);
 }
 
+
+
+export async function fetchSyncStatus() {
+  const res = await fetch(`${API_BASE}/sync/`, {
+    headers: authHeaders(),
+  });
+  return await handleResponse(res);
+}
+
+export async function trigger3LevelSync(pushToGit = false) {
+  const res = await fetch(`${API_BASE}/sync/`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ push_to_git: pushToGit })
+  });
+  return await handleResponse(res);
+}

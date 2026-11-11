@@ -162,3 +162,58 @@ class CoopOSTestCase(APITestCase):
         self.assertEqual(res_untoggle.status_code, 200)
         self.assertEqual(res_untoggle.data['is_completed'], False)
         self.assertIsNone(res_untoggle.data['administered_date'])
+
+
+    def test_3level_sync_system_with_dummy_dataset(self):
+        # 1. Create a dummy dataset
+        batch = Batch.objects.create(
+            batch_no=909,
+            date="2026-03-01",
+            buying_price="3500.00",
+            no_of_chicks=50
+        )
+        customer = CustomerDetail.objects.create(
+            customer_id=909,
+            customer_name="Test Buyer",
+            contact_number="9876543210",
+            category="restaurant"
+        )
+        sale = BatchSale.objects.create(
+            batch=batch,
+            date="2026-03-15",
+            sale_type="meat",
+            payment_method="cash",
+            no_of_hens=10,
+            no_of_roosters=5,
+            kg="30.500",
+            price_per_kg="220.00",
+            amount="6710.00",
+            customer=customer
+        )
+        expense = BatchExpense.objects.create(
+            batch=batch,
+            date="2026-03-05",
+            expense_type="Feed Starter",
+            amount="1200.00"
+        )
+
+        # 2. Trigger sync endpoint
+        response = self.client.post('/api/sync/', data={"push_to_git": False}, format='json')
+        self.assertEqual(response.status_code, 200)
+        data = response.data
+        self.assertTrue(data['success'])
+
+        # 3. Verify Level 1 Cloud counts
+        self.assertGreaterEqual(data['counts']['batches'], 1)
+        self.assertGreaterEqual(data['counts']['customers'], 1)
+        self.assertGreaterEqual(data['counts']['sales'], 1)
+
+        # 4. Verify Level 3 Vault Archive
+        self.assertEqual(data['level3_vault']['status'], 'saved')
+        self.assertGreater(data['level3_vault']['size_kb'], 0)
+        self.assertIsNotNone(data['level3_vault']['checksum'])
+
+        # 5. Verify GET /api/sync/ returns synced status
+        res_get = self.client.get('/api/sync/')
+        self.assertEqual(res_get.status_code, 200)
+        self.assertEqual(res_get.data['status'], 'synced')

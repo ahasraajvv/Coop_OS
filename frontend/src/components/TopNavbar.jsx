@@ -18,9 +18,12 @@ import {
   User,
   Shield,
   TrendingUp,
-  X
+  X,
+  Cloud,
+  CheckCircle2
 } from 'lucide-react';
 import { formatCurrency, formatNumber, formatDate, translations } from '../utils';
+import { trigger3LevelSync, fetchSyncStatus } from '../api';
 
 export default function TopNavbar({
   currentView,
@@ -47,6 +50,27 @@ export default function TopNavbar({
   const [quickEntryOpen, setQuickEntryOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showSearchInput, setShowSearchInput] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState(null);
+
+  const handleSync = async () => {
+    try {
+      setSyncing(true);
+      const res = await trigger3LevelSync(false);
+      if (res && res.success) {
+        setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      }
+    } catch (err) {
+      console.warn('Auto sync notice:', err);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // Run auto-sync automatically on app load
+  useEffect(() => {
+    handleSync();
+  }, []);
 
   const batchMenuRef = useRef(null);
   const quickEntryRef = useRef(null);
@@ -431,6 +455,24 @@ export default function TopNavbar({
               </button>
             )}
           </div>
+
+          {/* 3-Level Auto Sync Button & Indicator */}
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            title={lastSyncTime ? `3-Level Sync (Cloud + Local + Vault). Last synced at ${lastSyncTime}` : "3-Level Auto Sync (Cloud + Local + Vault)"}
+            className={`h-9 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition cursor-pointer ${
+              syncing
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                : 'bg-[#11131a] hover:bg-[#161922] border-[#1e2230] text-emerald-400 hover:text-emerald-300'
+            }`}
+          >
+            <Cloud className={`w-3.5 h-3.5 ${syncing ? 'animate-bounce text-amber-400' : 'text-emerald-400'}`} />
+            <span className="hidden md:inline font-mono text-[11px]">
+              {syncing ? 'Syncing...' : 'Auto Sync'}
+            </span>
+            <span className={`w-2 h-2 rounded-full shrink-0 ${syncing ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
+          </button>
 
           {/* Refresh Action */}
           <button

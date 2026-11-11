@@ -2,7 +2,7 @@ from django.urls import path, include
 from .views import (
     BatchViewSet, BatchExpenseViewSet, MortalityRateViewSet,
     CustomerDetailViewSet, BatchSaleViewSet, InfraExpenseViewSet,
-    VaccinationRecordViewSet
+    VaccinationRecordViewSet, sync_status_view
 )
 from rest_framework.routers import DefaultRouter
 
@@ -16,5 +16,6 @@ router.register(r'infra-expenses', InfraExpenseViewSet, basename='infra-expense'
 router.register(r'vaccinations', VaccinationRecordViewSet, basename='vaccination')
 
 urlpatterns = [
+    path('sync/', sync_status_view, name='sync_status'),
     path('', include(router.urls)),
 ]

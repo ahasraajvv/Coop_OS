@@ -281,3 +281,31 @@ def logout_view(request):
     # Deletes the token from the DB → instantly revoked
     request.user.auth_token.delete()
     return Response({"message": "Logged out successfully."})
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def sync_status_view(request):
+    """
+    GET: Returns current sync status and manifest.
+    POST: Triggers 3-level data replication across Cloud, Local SQLite, and GitHub Vault.
+    """
+    import os
+    import json
+    from django.conf import settings
+    from farm.sync_service import run_3level_sync
+
+    if request.method == 'POST':
+        push_git = request.data.get('push_to_git', False) if isinstance(request.data, dict) else False
+        res = run_3level_sync(push_to_git=push_git)
+        return Response(res)
+
+    manifest_path = os.path.join(settings.BASE_DIR, 'data_vault', 'manifest.json')
+    if os.path.exists(manifest_path):
+        try:
+            with open(manifest_path, 'r', encoding='utf-8') as f:
+                manifest_data = json.load(f)
+            return Response({'status': 'synced', 'manifest': manifest_data})
+        except Exception:
+            pass
+    return Response({'status': 'ready', 'manifest': None})

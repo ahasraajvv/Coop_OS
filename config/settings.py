@@ -91,10 +91,14 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+    },
+    'local_replica': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
-# Automatically use PostgreSQL when DATABASE_URL is set in environment or .env
+# Automatically use PostgreSQL for default when DATABASE_URL is set in environment or .env
 database_url = os.environ.get("DATABASE_URL")
 if database_url:
     DATABASES['default'] = dj_database_url.parse(database_url, conn_max_age=600)

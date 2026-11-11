@@ -1,0 +1,16 @@
+{
+  "last_synced": "2026-11-11T12:08:13.488489",
+  "checksum_sha256": "dceef276baaf934f08886d98000bd1c6a99ac7585d00bfb3c22b8ebe7e376675",
+  "archive_size_kb": 0.34,
+  "counts": {
+    "users": 1,
+    "batches": 0,
+    "customers": 0,
+    "batch_expenses": 0,
+    "infra_expenses": 0,
+    "mortalities": 0,
+    "sales": 0,
+    "vaccinations": 0,
+    "total_records": 1
+  }
+}
